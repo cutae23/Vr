@@ -10,6 +10,7 @@ export interface Artwork {
   width: number; // in meters
   height: number; // in meters
   frameType: FrameType;
+  mediaType?: 'image' | 'video';
 }
 
 export type HallType = 

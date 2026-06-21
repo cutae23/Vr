@@ -30,6 +30,7 @@ export default function ArtworkModal({
   const [width, setWidth] = useState(1.5);
   const [height, setHeight] = useState(1.2);
   const [frameType, setFrameType] = useState<FrameType>('none');
+  const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   
   const [dragActive, setDragActive] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -156,6 +157,7 @@ export default function ArtworkModal({
         setWidth(currentArtwork.width);
         setHeight(currentArtwork.height);
         setFrameType(currentArtwork.frameType);
+        setMediaType(currentArtwork.mediaType || 'image');
       } else {
         // Safe standard presets based on hall style
         setTitle('');
@@ -164,6 +166,7 @@ export default function ArtworkModal({
         setDescription('');
         setImageUrl('');
         setFrameType(hallStyle === 'classic' ? 'ornate-gold' : hallStyle === 'modern' ? 'thin-black' : 'cyber-neon');
+        setMediaType('image');
         
         // Match default size nicely proportional to maximum dimensions
         setWidth(Math.min(2.0, maxDimensions.width * 0.7));
@@ -175,19 +178,40 @@ export default function ArtworkModal({
 
   if (!isOpen) return null;
 
-  // Handles image read
+  // Handles image and video reads
   const handleFile = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setErrorMsg('이미지 파일(*.png, *.jpg, *.webp 등)만 선택할 수 있습니다.');
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      setErrorMsg('전시 가능한 파일 형식은 이미지(*.png, *.jpg, *.webp 등) 또는 동영상(*.mp4, *.webm) 입니다.');
       return;
     }
     setErrorMsg('');
+    const isVid = file.type.startsWith('video/');
+    
+    // Check sizing warning if file is exceptionally heavy
+    if (file.size > 15 * 1024 * 1024) {
+      setErrorMsg('파일의 크기가 약간 큽니다(최대 권장 15MB). 스마트폰이나 PC의 가상 3D 환경 성능을 위해 더 저용량의 비디오 파일 사용을 제안합니다.');
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
         const base64 = e.target.result as string;
         setImageUrl(base64);
-        analyzeArtworkImage(base64);
+        setMediaType(isVid ? 'video' : 'image');
+        
+        if (!isVid) {
+          analyzeArtworkImage(base64);
+        } else {
+          if (!title.trim()) {
+            setTitle(file.name.split('.')[0] || '나만의 가상 전시 비디오');
+          }
+          if (!artist.trim() || artist === '익명 아티스트') {
+            setArtist('나의 큐레이션');
+          }
+          if (!description.trim()) {
+            setDescription('나의 컴퓨터 또는 핸드폰 장치로부터 직접 연동해 전시장 3D 가상 벽면에 투사시킨 미디어 비디오 영상 작품관입니다.');
+          }
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -230,7 +254,7 @@ export default function ArtworkModal({
       return;
     }
     if (!imageUrl) {
-      setErrorMsg('전시할 이미지 파일을 업로드하거나 하단의 AI 아트 제너레이터를 눌러 이미지를 선택해 주세요.');
+      setErrorMsg('전시할 이미지 또는 영상 파일을 업로드하거나 하단의 AI 아트 제너레이터를 눌러 이미지를 선택해 주세요.');
       return;
     }
 
@@ -247,7 +271,8 @@ export default function ArtworkModal({
       imageUrl,
       width: finalWidth,
       height: finalHeight,
-      frameType
+      frameType,
+      mediaType
     });
   };
 
@@ -269,7 +294,7 @@ export default function ArtworkModal({
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-[10px] font-bold text-indigo-300 uppercase tracking-widest animate-pulse">
                   AI DOCENT ENGINE
                 </span>
-                <h4 className="text-sm font-extrabold text-slate-100 mt-2">AI 도슨트가 작품 정치 정밀 정감 중...</h4>
+                <h4 className="text-sm font-extrabold text-slate-100 mt-2">AI 도슨트가 작품 정밀 분석 중...</h4>
                 <p className="text-[11px] text-slate-400 max-w-[280px] mx-auto mt-2 leading-relaxed">
                   이미지의 구도와 분위기를 파악하여 <strong className="text-white">제목, 작가, 가상 3D 크기 및 매칭 프레임 스타일, 큐레이팅 도슨트 해설</strong>을 자동 생성 중입니다.
                 </p>
@@ -306,17 +331,29 @@ export default function ArtworkModal({
                   <div className="absolute -inset-2.5 border-2 border-[#f72585] rounded-sm shadow-[0_0_15px_rgba(247,37,133,0.8)] animate-pulse pointer-events-none bg-transparent z-10" />
                 )}
 
-                <img 
-                  src={imageUrl} 
-                  alt="Live Artwork Preview" 
-                  className="w-full h-full object-cover rounded-sm"
-                  referrerPolicy="no-referrer"
-                />
+                {mediaType === 'video' ? (
+                  <video 
+                    src={imageUrl} 
+                    className="w-full h-full object-cover rounded-sm z-0"
+                    controls
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img 
+                    src={imageUrl} 
+                    alt="Live Artwork Preview" 
+                    className="w-full h-full object-cover rounded-sm"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               </div>
             ) : (
               <div className="text-center text-slate-600 flex flex-col items-center">
                 <Palette size={48} className="text-slate-700 mb-2 animate-bounce" />
-                <p className="text-sm">이미지를 업로드하거나 임의 생성하면</p>
+                <p className="text-sm">이미지 또는 영상을 업로드해주시면</p>
                 <p className="text-xs">여기에 가상 비주얼이 액자 레이아웃으로 표시됩니다.</p>
               </div>
             )}
@@ -367,12 +404,17 @@ export default function ArtworkModal({
           {/* Form Content Scrolling Portion */}
           <div className="flex-1 space-y-4 mb-6 pr-1 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 180px)' }}>
             
-            {/* 1. Image Upload Section */}
+            {/* 1. Image/Video Upload Section */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">1. 이미지 업로드 & 리소스 선택</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>1. 이미지 또는 동영상 업로드</span>
+                {mediaType === 'video' && (
+                  <span className="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-900 px-2 py-0.5 rounded-full uppercase tracking-wider">Video Mode Active</span>
+                )}
+              </label>
               
               <div 
-                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center ${
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center ${
                   dragActive ? 'border-primary bg-indigo-950/20' : 'border-slate-800 hover:border-slate-700 bg-slate-950'
                 }`}
                 onDragEnter={handleDrag}
@@ -385,30 +427,49 @@ export default function ArtworkModal({
                   type="file" 
                   ref={fileInputRef} 
                   className="hidden" 
-                  accept="image/*"
+                  accept="image/*,video/*"
                   onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                 />
                 
-                <Upload size={24} className="text-slate-500 mb-1.5" />
-                <p className="text-xs text-slate-300 font-medium">컴퓨터에 있는 이미지 파일 올리기</p>
-                <p className="text-[10px] text-slate-500 mt-1">드래그 앤 드롭 또는 클릭하여 업로드</p>
+                <Upload size={24} className="text-slate-500 mb-2" />
+                <p className="text-xs text-slate-300 font-medium">컴퓨터/핸드폰에서 이미지 또는 영상 선택</p>
+                <p className="text-[10px] text-slate-500 mt-1">드래그 앤 드롭 또는 클릭하여 파일 등록 (.mp4, .webm, .png, .jpg, .webp)</p>
+              </div>
+
+              {/* URL paste helper */}
+              <div className="mt-2 text-left">
+                <label className="block text-[10px] font-medium text-slate-400 mb-1">인터넷 이미지/동영상 URL 링크 투사 (선택사항)</label>
+                <input 
+                  type="text" 
+                  value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setImageUrl(val);
+                    if (val) {
+                      const isVideoUrl = val.endsWith('.mp4') || val.endsWith('.webm') || val.includes('/video') || val.includes('.mov') || val.includes('mp4');
+                      setMediaType(isVideoUrl ? 'video' : 'image');
+                    }
+                  }}
+                  placeholder="https://example.com/movie.mp4 또는 .jpg 경로 직접 입력"
+                  className="w-full text-[11px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-300 placeholder-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
               </div>
 
               {/* Procedural Generator Option as a handy helper */}
-              <div className="mt-2 flex items-center justify-between gap-2 p-2 bg-slate-950 border border-slate-850 rounded-xl">
+              <div className="mt-2.5 flex items-center justify-between gap-1 p-2.5 bg-slate-950 border border-slate-850 rounded-xl">
                 <div className="hidden sm:block">
                   <p className="text-[10px] text-slate-300 font-semibold flex items-center gap-1">
                     <Palette size={12} className="text-pink-500" />
-                    <span>혹시 준비된 이미지가 없으신가요?</span>
+                    <span>혹시 준비된 미디어가 없으신가요?</span>
                   </p>
-                  <p className="text-[9px] text-slate-500">지정한 제목에 맞는 고해상도 AI 아트를 즉석 생성합니다.</p>
+                  <p className="text-[9px] text-slate-500">한국어로 지정한 제목에 맞는 고해상도 AI 아트 이미지를 즉석 생성합니다.</p>
                 </div>
                 <button
                   type="button"
                   onClick={handleProceduralGenerate}
-                  className="w-full sm:w-auto px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-700/50 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-center self-end"
+                  className="w-full sm:w-auto px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-700/50 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-center self-end cursor-pointer"
                 >
-                  <span>AI 제너레이터로 이미지 생성</span>
+                  <span>AI 제너레이터 이미지 생성</span>
                   <ArrowRight size={12} />
                 </button>
               </div>

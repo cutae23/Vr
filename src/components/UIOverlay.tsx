@@ -55,6 +55,7 @@ interface UIOverlayProps {
   setVisibleHallsCount: (count: number) => void;
   activeArtworksLimit: number;
   setActiveArtworksLimit: (limit: number) => void;
+  activeDocentId?: string | null;
 }
 
 export default function UIOverlay({
@@ -72,9 +73,45 @@ export default function UIOverlay({
   visibleHallsCount,
   setVisibleHallsCount,
   activeArtworksLimit,
-  setActiveArtworksLimit
+  setActiveArtworksLimit,
+  activeDocentId
 }: UIOverlayProps) {
   const minimapCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Trail list for tracking player footsteps & heat zones (Heatmap/Footpath)
+  const trailRef = useRef<{ x: number; z: number; count: number }[]>([]);
+  // Store the active hall ID so we can clear/reset trail on hall transitions
+  const lastHallIdRef = useRef<string>(currentHall.id);
+
+  // Synchronize player coordinates to update trail record & clear on hall transition
+  useEffect(() => {
+    // If we changed to a different hall, immediately clear trial footprints
+    if (lastHallIdRef.current !== currentHall.id) {
+      trailRef.current = [];
+      lastHallIdRef.current = currentHall.id;
+    }
+
+    const cx = playerPosition.x;
+    const cz = playerPosition.z;
+
+    // Filter points inside the trail matching immediate coordinate
+    const existing = trailRef.current.find(pt => {
+      const dx = pt.x - cx;
+      const dz = pt.z - cz;
+      return Math.sqrt(dx * dx + dz * dz) < 0.55; // 0.55m detection cluster radius
+    });
+
+    if (existing) {
+      // Accumulate lingering weights/dwell time (used to color heatmap intensity!)
+      existing.count = Math.min(existing.count + 1.25, 100);
+    } else {
+      // Limit trail footprint array size safely to avoid leaks
+      if (trailRef.current.length > 500) {
+        trailRef.current.shift();
+      }
+      trailRef.current.push({ x: cx, z: cz, count: 1 });
+    }
+  }, [playerPosition.x, playerPosition.z, currentHall.id]);
 
   // Gemini Custom API Configuration client-side state
   const [customKey, setCustomKey] = useState(() => localStorage.getItem("gemini_custom_api_key") || "");
@@ -158,6 +195,30 @@ export default function UIOverlay({
       ctx.font = 'normal 8px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(wallDef.id.split('_')[1].toUpperCase(), wx, wz - 6);
+    });
+
+    // Draw Heat footprints trail (glowing heat zones)
+    trailRef.current.forEach(point => {
+      const tx = scale(point.x);
+      const tz = scale(point.z);
+
+      // Higher count -> larger radius and redder hue (heatmap energy!)
+      const radius = 2.0 + Math.min(point.count * 0.12, 6.5);
+
+      // Color spectrum from bluish cyan (just passed by) -> yellow -> orange -> pure coral red
+      let fillStyle = 'rgba(56, 189, 248, 0.3)'; // Sky blue for footsteps
+      if (point.count > 50) {
+        fillStyle = 'rgba(239, 68, 68, 0.65)';   // Bright Red (Hot!)
+      } else if (point.count > 18) {
+        fillStyle = 'rgba(249, 115, 22, 0.5)'; // Orange (Warm)
+      } else if (point.count > 5) {
+        fillStyle = 'rgba(234, 179, 8, 0.4)';  // Yellow / Medium
+      }
+
+      ctx.fillStyle = fillStyle;
+      ctx.beginPath();
+      ctx.arc(tx, tz, radius, 0, Math.PI * 2);
+      ctx.fill();
     });
 
     // Draw player position and orientation vector arrow
@@ -254,9 +315,9 @@ export default function UIOverlay({
                 {isActive && (
                   <div className="mt-2 text-[10px] text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-850/60 animate-fade-in divide-y divide-slate-850">
                     <p className="pb-1.5 leading-relaxed">{hall.description}</p>
-                    <div className="pt-1.5 grid grid-cols-2 gap-1 text-[9px] text-slate-500 font-mono">
-                      <span>조명: <strong className="text-slate-350 font-normal">{hall.id === 'classic' ? '황금빛 웜' : hall.id === 'modern' ? '모던 스팟' : hall.id === 'neon' ? '네온 펄스' : hall.id === 'nordic' ? '자연 스카이' : '시티팝 오렌지'}</strong></span>
-                      <span>스타일: <strong className="text-slate-350 font-normal">{hall.id === 'classic' ? '정통 액자' : hall.id === 'modern' ? '초현대 캔버스' : hall.id === 'neon' ? '사이버 미디어' : hall.id === 'nordic' ? '내추럴 목재' : '바이올렛-골드'}</strong></span>
+                    <div className="pt-1.5 flex flex-col gap-1 text-[9px] text-slate-500 font-mono">
+                      <div className="line-clamp-1">조명: <strong className="text-slate-300 font-normal">{hall.lightingDescription}</strong></div>
+                      <div className="line-clamp-1">스타일: <strong className="text-slate-300 font-normal">{hall.exhibitionMethod}</strong></div>
                     </div>
                   </div>
                 )}
@@ -331,7 +392,7 @@ export default function UIOverlay({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Settings className="text-pink-400 rotate-45" size={17} />
-            <h3 className="text-sm font-bold text-slate-100">AI 도슨트 API & 자가 설치 가이드</h3>
+            <h3 className="text-sm font-bold text-slate-100">AI 도슨트 큐레이션 설정 (Gemini API)</h3>
           </div>
           <span className="text-[10px] font-semibold text-pink-400 bg-pink-950/40 px-2 py-0.5 rounded border border-pink-900/50">
             Gemini 3.5
@@ -427,11 +488,16 @@ export default function UIOverlay({
         <div className="flex-1 overflow-y-auto space-y-2.5 max-h-[280px]" id="tour_artworks_list">
           {artworks.map(art => {
             const wallDef = currentHall.wallPositions.find(w => w.id === art.id);
+            const isActive = art.id === activeDocentId;
             return (
               <div
                 key={art.id}
                 onClick={() => onFocusArtwork(art.id)}
-                className="group flex gap-3 p-2 bg-slate-950/70 hover:bg-slate-950 border border-slate-850/50 hover:border-slate-800 rounded-xl cursor-pointer transition text-left"
+                className={`group flex gap-3 p-2 rounded-xl cursor-pointer transition text-left ${
+                  isActive 
+                    ? 'bg-indigo-950 border-indigo-500/80 shadow-[0_0_15px_rgba(99,102,241,0.25)]' 
+                    : 'bg-slate-950/70 hover:bg-slate-950 border-slate-850/50 hover:border-slate-800'
+                }`}
               >
                 {/* Thumb preview image */}
                 <div className="w-12 h-12 rounded-lg bg-slate-900 overflow-hidden shrink-0 border border-slate-800 flex items-center justify-center relative">
@@ -451,12 +517,18 @@ export default function UIOverlay({
                 <div className="flex-1 min-w-0 pr-1 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-[11px] font-bold text-slate-200 truncate group-hover:text-indigo-300 transition-colors">
+                      <h4 className={`text-[11px] font-bold truncate transition-colors ${isActive ? 'text-pink-400' : 'text-slate-200 group-hover:text-indigo-300'}`}>
                         {art.title}
                       </h4>
-                      <span className="text-[8px] px-1 py-0.5 bg-slate-900 rounded text-slate-500 border border-slate-850/50 shrink-0 uppercase font-mono">
-                        {art.id.split('_')[1]}
-                      </span>
+                      {isActive ? (
+                        <span className="text-[8.5px] px-1.5 py-0.5 bg-pink-900 text-pink-200 border border-pink-700 rounded animate-pulse shrink-0 uppercase font-bold font-mono">
+                          🔊 ACTIVE
+                        </span>
+                      ) : (
+                        <span className="text-[8px] px-1 py-0.5 bg-slate-900 rounded text-slate-500 border border-slate-850/50 shrink-0 uppercase font-mono">
+                          {art.id.split('_')[1]}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] text-slate-400 truncate mt-0.5">{art.artist} ({art.year})</p>
                   </div>
@@ -489,7 +561,7 @@ export default function UIOverlay({
           </div>
           
           <p className="text-[9px] text-slate-500 leading-relaxed mt-2">
-            3D 갤러리에 어울리는 백그라운드 오르간/신스패드 화음을 실시간 주파수로 자동 생성합니다.
+            3D 갤러리에 어울리는 백그라운드 오르간/신스패드 화음을 실시간 주파수로 자동 생성합니다. <strong className="text-pink-400 font-normal">(작품 선택 시 AI 한국어 도슨트 성우 낭독가이드 자동 발화!)</strong>
           </p>
 
           <div className="mt-3.5 space-y-2">
@@ -521,25 +593,42 @@ export default function UIOverlay({
           </div>
         </div>
 
-        {/* 2D Minimap showing live coordinates */}
+        {/* 2D Minimap showing live coordinates, footprints heatmap and spectator icons */}
         <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-between" id="minimap_widget">
           <div className="w-full flex items-center justify-between shrink-0 mb-1.5">
             <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
               <MapIcon size={13} className="text-emerald-400" />
-              <span>미니맵</span>
+              <span>미니맵 및 발자취</span>
             </h4>
             <span className="text-[8px] font-mono text-slate-550">
               X: {playerPosition.x.toFixed(1)}, Z: {playerPosition.z.toFixed(1)}
             </span>
           </div>
 
-          <div className="w-[110px] h-[110px] rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center bg-slate-950">
+          <div className="w-[110px] h-[110px] rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center bg-slate-950 relative group">
             <canvas 
               ref={minimapCanvasRef} 
               width={160} 
               height={160} 
               className="w-full h-full block" 
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5 w-full mt-2.5">
+            {/* Heatmap Legend */}
+            <div className="flex items-center justify-between w-full text-[8.5px] text-slate-400/80 font-mono bg-slate-950/40 p-1 px-1.5 rounded-md border border-slate-850/40">
+              <span className="flex items-center gap-1 font-bold text-sky-400">● <span className="text-[8px] text-slate-450 font-normal">통과</span></span>
+              <span className="flex items-center gap-1 font-bold text-yellow-500">● <span className="text-[8px] text-slate-450 font-normal">관람</span></span>
+              <span className="flex items-center gap-1 font-bold text-red-500 animate-pulse">● <span className="text-[8px] text-slate-450 font-normal">체류</span></span>
+            </div>
+            
+            {/* Clear Button */}
+            <button
+              onClick={() => { trailRef.current = []; }}
+              className="w-full py-1 text-[8.5px] bg-slate-950/60 hover:bg-slate-950 border border-slate-850/50 hover:border-slate-800 text-slate-400 font-bold rounded-lg transition-colors cursor-pointer select-none hover:text-slate-200"
+            >
+              발자취 기록 초기화
+            </button>
           </div>
         </div>
 

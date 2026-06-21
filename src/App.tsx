@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Artwork, ExhibitionHall, HallType, PlayerPosition } from './types';
 import { EXHIBITION_HALLS, getPresetArtworks } from './data';
 import GalleryCanvas from './components/GalleryCanvas';
 import UIOverlay from './components/UIOverlay';
 import ArtworkModal from './components/ArtworkModal';
-import { ambientPlayer } from './utils/audio';
+import { ambientPlayer, speakDocentArtwork, stopDocentSpeech } from './utils/audio';
 import { 
   Building, 
   Layers, 
@@ -15,7 +15,9 @@ import {
   Volume2,
   VolumeX,
   RefreshCw,
-  Palette
+  Palette,
+  Download,
+  Upload
 } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'vr_gallery_artworks_v3';
@@ -93,8 +95,39 @@ export default function App() {
   // Guided docent tour: smooth focus on a target artwork
   const [focusArtworkId, setFocusArtworkId] = useState<string | null>(null);
 
+  // Automated proximity docent trigger: tracks closest active artwork in range
+  const [nearestArtworkId, setNearestArtworkId] = useState<string | null>(null);
+
+  // Synchronize proximity triggers to automatically initiate docent speech
+  useEffect(() => {
+    const list = galleryArtworks[activeHallId] || [];
+    const walls = currentHall.wallPositions;
+
+    let closestId: string | null = null;
+    let minDistance = 3.8; // Trigger when player is within 3.8 meters of the artwork wall
+
+    walls.forEach(w => {
+      // Find loaded artwork corresponding to this wall ID
+      const art = list.find(a => a.id === w.id);
+      if (!art || !art.imageUrl) return;
+
+      const dx = playerPosition.x - w.position[0];
+      const dz = playerPosition.z - w.position[2];
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestId = art.id;
+      }
+    });
+
+    if (closestId !== nearestArtworkId) {
+      setNearestArtworkId(closestId);
+    }
+  }, [playerPosition.x, playerPosition.z, activeHallId, galleryArtworks, currentHall.wallPositions, nearestArtworkId]);
+
   // Synth Audio state indicators
-  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(true);
   const [audioMuted, setAudioMuted] = useState(false);
 
   // Mobile virtual joystick control signals
@@ -122,6 +155,29 @@ export default function App() {
       ambientPlayer.play(activeHallId);
     }
   }, [activeHallId, isPlayingMusic, audioMuted]);
+
+  // Trigger AI Docent Korean TTS audio narration when a specific painting is targeted, focused or approached closely
+  useEffect(() => {
+    const activeDocentId = focusArtworkId || nearestArtworkId;
+    if (activeDocentId) {
+      const targetArt = (galleryArtworks[activeHallId] || []).find(art => art.id === activeDocentId);
+      if (targetArt) {
+        speakDocentArtwork(
+          targetArt.title,
+          targetArt.artist,
+          targetArt.year,
+          targetArt.description,
+          audioMuted
+        );
+      }
+    } else {
+      stopDocentSpeech();
+    }
+    
+    return () => {
+      stopDocentSpeech();
+    };
+  }, [focusArtworkId, nearestArtworkId, activeHallId, audioMuted, galleryArtworks]);
 
   const handleStartMusic = () => {
     ambientPlayer.play(activeHallId);
@@ -174,6 +230,46 @@ export default function App() {
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportGallery = () => {
+    try {
+      const dataStr = JSON.stringify(galleryArtworks, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `나만의_가상_VR미술관_큐레이션_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('파일 저장(컴퓨터/핸드폰) 중 오류가 발생했습니다: ' + e);
+    }
+  };
+
+  const handleImportGallery = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target?.result as string);
+        if (typeof parsed === 'object' && parsed !== null) {
+          setGalleryArtworks(parsed);
+          alert('나만의 미술관 큐레이션 파일을 성공적으로 불러왔습니다!');
+        } else {
+          throw new Error('올바른 파일 형식이 아닙니다.');
+        }
+      } catch (err) {
+        alert('파일을 불러오지 못했습니다. 올바른 갤러리 설정 JSON 파일인지 확인해주세요.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const activeWallDef = currentHall.wallPositions.find(w => w.id === selectedWallId);
   const activeArtwork = (galleryArtworks[activeHallId] || []).find(art => art.id === selectedWallId) || null;
 
@@ -188,25 +284,53 @@ export default function App() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-md sm:text-lg font-bold tracking-tight text-white uppercase font-sans">VR Meta Gallery</h1>
-              <span className="text-[10px] bg-emerald-950 text-emerald-400 font-semibold border border-emerald-900 px-2 py-0.5 rounded-full uppercase tracking-wider">Live Sandbox</span>
+              <h1 className="text-md sm:text-lg font-bold tracking-tight text-white uppercase font-sans">나만의 프라이빗 VR 미술관</h1>
+              <span className="text-[10px] bg-emerald-950 text-emerald-400 font-semibold border border-emerald-900 px-2 py-0.5 rounded-full uppercase tracking-wider">My Private VR Gallery</span>
             </div>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">다양한 층고와 독립 전시 방식을 적용한 인터랙티브 가상 3D VR 아트 미술관</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">내가 업로드한 명장면 영상과 이미지를 3D 전시관에 큐레이팅하고 컴퓨터/핸드폰에 저장하는 맞춤형 공간</p>
           </div>
         </div>
 
         {/* Global actions */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 bg-slate-900/40 p-1.5 px-2 rounded-2xl border border-slate-900">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportGallery} 
+            accept=".json" 
+            className="hidden" 
+          />
+          
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition cursor-pointer shadow-sm"
+            title="기존에 컴퓨터나 핸드폰에 저장해둔 전시 파일 불러오기 (.json)"
+          >
+            <Upload size={13} />
+            <span className="hidden sm:inline">전시 파일 불러오기</span>
+            <span className="sm:hidden">불러오기</span>
+          </button>
+
+          <button
+            onClick={handleExportGallery}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition cursor-pointer shadow-sm"
+            title="현재 꾸민 전시의 이미지와 동영상 배치를 컴퓨터/핸드폰 파일로 내보내기"
+          >
+            <Download size={13} />
+            <span className="hidden sm:inline">컴퓨터/폰에 저장하기</span>
+            <span className="sm:hidden">저장하기</span>
+          </button>
+
           <button
             onClick={handleResetGalleryToPresets}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl transition cursor-pointer"
-            title="기본전시로 되돌리기"
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xl transition cursor-pointer"
+            title="기본 명작전시로 되돌리기"
           >
             <RefreshCw size={13} />
             <span>큐레이션 초기화</span>
           </button>
           
-          <div className="hidden md:flex gap-1.5 items-center bg-slate-900/60 border border-slate-850 px-3.5 py-1.5 rounded-xl text-xs text-slate-400 font-mono">
+          <div className="hidden xl:flex gap-1.5 items-center bg-slate-950 border border-slate-850 px-3 py-1.5 rounded-xl text-xs text-slate-400 font-mono">
             <span>방문자 좌표:</span>
             <strong className="text-slate-200">X: {playerPosition.x.toFixed(1)}m</strong>
             <span className="text-slate-700">|</span>
@@ -254,6 +378,7 @@ export default function App() {
             focusArtworkId={focusArtworkId}
             onClearFocus={() => setFocusArtworkId(null)}
             dpadControl={dpadControl}
+            nearestArtworkId={nearestArtworkId}
           />
 
           {/* Quick usage Tip bar bellow 3D viewport */}
@@ -283,6 +408,7 @@ export default function App() {
           setVisibleHallsCount={setVisibleHallsCount}
           activeArtworksLimit={activeArtworksLimit}
           setActiveArtworksLimit={setActiveArtworksLimit}
+          activeDocentId={focusArtworkId || nearestArtworkId}
         />
 
       </main>

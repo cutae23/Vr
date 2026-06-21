@@ -12,7 +12,7 @@ function generate15WallPositions(hallId: string) {
       id: `${hallId}_w${walls.length + 1}`,
       position: [x, 2.0, -11.0] as [number, number, number],
       rotation: [0, 0, 0] as [number, number, number],
-      maxDimensions: { width: 3.2, height: 2.2 }
+      maxDimensions: { width: 8.0, height: 8.0 }
     });
   });
 
@@ -23,7 +23,7 @@ function generate15WallPositions(hallId: string) {
       id: `${hallId}_w${walls.length + 1}`,
       position: [x, 2.0, 11.0] as [number, number, number],
       rotation: [0, Math.PI, 0] as [number, number, number],
-      maxDimensions: { width: 3.2, height: 2.2 }
+      maxDimensions: { width: 8.0, height: 8.0 }
     });
   });
 
@@ -34,7 +34,7 @@ function generate15WallPositions(hallId: string) {
       id: `${hallId}_w${walls.length + 1}`,
       position: [-11.0, 2.0, z] as [number, number, number],
       rotation: [0, Math.PI / 2, 0] as [number, number, number],
-      maxDimensions: { width: 3.2, height: 2.2 }
+      maxDimensions: { width: 8.0, height: 8.0 }
     });
   });
 
@@ -45,7 +45,7 @@ function generate15WallPositions(hallId: string) {
       id: `${hallId}_w${walls.length + 1}`,
       position: [11.0, 2.0, z] as [number, number, number],
       rotation: [0, -Math.PI / 2, 0] as [number, number, number],
-      maxDimensions: { width: 3.2, height: 2.2 }
+      maxDimensions: { width: 8.0, height: 8.0 }
     });
   });
 
@@ -54,7 +54,7 @@ function generate15WallPositions(hallId: string) {
     id: `${hallId}_w15`,
     position: [0.0, 2.0, -4.5] as [number, number, number],
     rotation: [0, 0, 0] as [number, number, number],
-    maxDimensions: { width: 3.4, height: 2.3 }
+    maxDimensions: { width: 8.0, height: 8.0 }
   });
 
   return walls;

@@ -184,3 +184,63 @@ class AmbientSynthesizer {
 }
 
 export const ambientPlayer = new AmbientSynthesizer();
+
+/**
+ * High-performance, human-centric AI Docent TTS Speech synthesis helper.
+ * Reads the artwork title, artist name, and description in beautiful Korean voice.
+ */
+let isTTSCancelledByMute = false;
+
+export function speakDocentArtwork(
+  title: string, 
+  artist: string, 
+  year: string, 
+  description: string, 
+  audioMuted: boolean,
+  onStart?: () => void, 
+  onEnd?: () => void
+) {
+  if (!('speechSynthesis' in window)) {
+    console.warn("Speech Synthesis TTS is not supported in this browser.");
+    return;
+  }
+
+  // Silently stop speaking if muted or disabled
+  window.speechSynthesis.cancel();
+  if (audioMuted) {
+    return;
+  }
+
+  const introText = `작품명, ${title}.  작가, ${artist}.  ${year || ''}년 무렵 제작.`;
+  const fullText = `${introText}.  작품 부연 설명은 다음과 같습니다. ${description}`;
+
+  const utterance = new SpeechSynthesisUtterance(fullText);
+  utterance.lang = 'ko-KR';
+  utterance.rate = 0.94; // Elegantly paced for gallery atmosphere
+  utterance.pitch = 1.0;
+
+  // Attempt to lock high-quality ko-KR voice seamlessly
+  const voices = window.speechSynthesis.getVoices();
+  const koVoice = voices.find(v => v.lang.includes('ko') || v.lang.includes('KO'));
+  if (koVoice) {
+    utterance.voice = koVoice;
+  }
+
+  // Handle events
+  if (onStart) utterance.onstart = onStart;
+  if (onEnd) utterance.onend = onEnd;
+
+  // Safety trigger for Chrome bug where voice pauses indefinitely on long texts
+  utterance.onboundary = (event) => {
+    // Keep internal clock ticking
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+export function stopDocentSpeech() {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
