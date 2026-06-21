@@ -20,6 +20,11 @@ interface GalleryCanvasProps {
     turnRight: boolean;
   };
   nearestArtworkId?: string | null;
+  onSelectHall?: (hallId: HallType) => void;
+  prevHallId?: HallType | null;
+  nextHallId?: HallType | null;
+  prevHallName?: string;
+  nextHallName?: string;
 }
 
 export default function GalleryCanvas({
@@ -31,7 +36,12 @@ export default function GalleryCanvas({
   focusArtworkId,
   onClearFocus,
   dpadControl,
-  nearestArtworkId
+  nearestArtworkId,
+  onSelectHall,
+  prevHallId,
+  nextHallId,
+  prevHallName,
+  nextHallName
 }: GalleryCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,6 +73,7 @@ export default function GalleryCanvas({
     activeHallId: HallType | null;
     activeWallCount: number | null;
     videoElements: Map<string, HTMLVideoElement>;
+    portalMeshes: THREE.Object3D[];
   }>({
     scene: null,
     camera: null,
@@ -78,7 +89,8 @@ export default function GalleryCanvas({
     animationFrameId: null,
     activeHallId: null,
     activeWallCount: null,
-    videoElements: new Map()
+    videoElements: new Map(),
+    portalMeshes: []
   });
 
   const [isInitialized, setIsInitialized] = useState(false);
@@ -95,6 +107,16 @@ export default function GalleryCanvas({
   useEffect(() => {
     onPlayerMoveRef.current = onPlayerMove;
   }, [onPlayerMove]);
+
+  const onSelectHallRef = useRef(onSelectHall);
+  const prevHallIdRef = useRef(prevHallId);
+  const nextHallIdRef = useRef(nextHallId);
+
+  useEffect(() => {
+    onSelectHallRef.current = onSelectHall;
+    prevHallIdRef.current = prevHallId;
+    nextHallIdRef.current = nextHallId;
+  }, [onSelectHall, prevHallId, nextHallId]);
 
   // Initialize ThreeJS once
   useEffect(() => {
@@ -153,13 +175,22 @@ export default function GalleryCanvas({
       stateRef.current.wallMeshes.forEach(mesh => {
         interactableTargets.push(mesh);
       });
+      if (stateRef.current.portalMeshes) {
+        interactableTargets.push(...stateRef.current.portalMeshes);
+      }
 
       const intersects = raycaster.intersectObjects(interactableTargets, true);
       if (intersects.length > 0) {
-        // Find ancestor or associated user data to fetch Wall ID
+        // Find ancestor or associated user data to fetch Wall ID or Portal Action
         let currentObj: THREE.Object3D | null = intersects[0].object;
         let detectedWallId: string | null = null;
+        let detectedPortalAction: 'prev' | 'next' | null = null;
+
         while (currentObj) {
+          if (currentObj.userData && currentObj.userData.portalAction) {
+            detectedPortalAction = currentObj.userData.portalAction;
+            break;
+          }
           if (currentObj.userData && currentObj.userData.wallId) {
             detectedWallId = currentObj.userData.wallId;
             break;
@@ -167,7 +198,14 @@ export default function GalleryCanvas({
           currentObj = currentObj.parent;
         }
 
-        if (detectedWallId) {
+        if (detectedPortalAction) {
+          const action = detectedPortalAction;
+          if (action === 'prev' && prevHallIdRef.current && onSelectHallRef.current) {
+            onSelectHallRef.current(prevHallIdRef.current);
+          } else if (action === 'next' && nextHallIdRef.current && onSelectHallRef.current) {
+            onSelectHallRef.current(nextHallIdRef.current);
+          }
+        } else if (detectedWallId) {
           onWallClick(detectedWallId);
         }
       }
@@ -1212,9 +1250,153 @@ export default function GalleryCanvas({
       scene.add(spotLight);
     });
 
+    // 6.5. Generate physical next/previous hall portals/doors in the 3D VR space!
+    stateRef.current.portalMeshes = [];
+
+    const createPortalTexture = (title: string, subtitle: string, isNext: boolean) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d')!;
+
+      // Premium background gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, 1024);
+      if (isNext) {
+        grad.addColorStop(0, '#0f172a');
+        grad.addColorStop(0.5, '#4f46e5');
+        grad.addColorStop(1, '#818cf8');
+      } else {
+        grad.addColorStop(0, '#0f172a');
+        grad.addColorStop(0.5, '#0d9488');
+        grad.addColorStop(1, '#2dd4bf');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 512, 1024);
+
+      // Border frame glow stroke
+      ctx.strokeStyle = isNext ? '#c7d2fe' : '#99f6e4';
+      ctx.lineWidth = 20;
+      ctx.strokeRect(10, 10, 512 - 20, 1024 - 20);
+
+      // Add cyber horizontal grids
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 3;
+      for (let y = 140; y < 1024; y += 120) {
+        ctx.beginPath();
+        ctx.moveTo(20, y);
+        ctx.lineTo(512 - 20, y);
+        ctx.stroke();
+      }
+
+      // Draw Action Arrow icon
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 96px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(isNext ? '▶' : '◀', 256, 250);
+
+      // Draw Portal title
+      ctx.font = 'bold 38px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fillText(title, 256, 430);
+
+      // Draw Hall subtitle name
+      ctx.font = 'bold 42px Inter, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      const cleanSub = subtitle.split(' : ')[1] || subtitle;
+      const slicedSub = cleanSub.length > 12 ? cleanSub.slice(0, 11) + '...' : cleanSub;
+      ctx.fillText(slicedSub, 256, 520);
+
+      // Draw instruction
+      ctx.font = 'bold 28px Inter, sans-serif';
+      ctx.fillStyle = isNext ? '#a5b4fc' : '#5eead4';
+      ctx.fillText('워프 게이트 클릭', 256, 760);
+      ctx.font = 'normal 24px sans-serif';
+      ctx.fillText('(Click to Enter)', 256, 810);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    };
+
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: 0x111827,
+      metalness: 0.9,
+      roughness: 0.15
+    });
+
+    // Helper to spawn a full portal in the scene
+    const spawnPortal = (isNext: boolean, targetHallId: HallType | null | undefined, targetHallName: string) => {
+      if (!targetHallId) return;
+
+      const portalGroup = new THREE.Group();
+      
+      const title = isNext ? '다음 전시관' : '이전 전시관';
+      const portalTex = createPortalTexture(title, targetHallName, isNext);
+      
+      // Portal central glowing screen mesh
+      const paneGeo = new THREE.PlaneGeometry(2.2, 3.2);
+      const paneMat = new THREE.MeshBasicMaterial({
+        map: portalTex,
+        transparent: true,
+        opacity: 0.90,
+        side: THREE.DoubleSide
+      });
+      const paneMesh = new THREE.Mesh(paneGeo, paneMat);
+      paneMesh.position.set(0, 1.6, 0);
+      portalGroup.add(paneMesh);
+
+      // Left post
+      const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.4, 0.35), frameMat);
+      leftPost.position.set(-1.19, 1.7, 0);
+      leftPost.castShadow = true;
+      leftPost.receiveShadow = true;
+      portalGroup.add(leftPost);
+
+      // Right post
+      const rightPost = leftPost.clone();
+      rightPost.position.x = 1.19;
+      portalGroup.add(rightPost);
+
+      // Top beam
+      const topBeam = new THREE.Mesh(new THREE.BoxGeometry(2.56, 0.18, 0.35), frameMat);
+      topBeam.position.set(0, 3.4 + 0.09, 0);
+      topBeam.castShadow = true;
+      topBeam.receiveShadow = true;
+      portalGroup.add(topBeam);
+
+      // Glowing light inside the portal
+      const gateLight = new THREE.PointLight(isNext ? 0x4f46e5 : 0x0d9488, 3.0, 7);
+      gateLight.position.set(0, 1.6, 0.2);
+      portalGroup.add(gateLight);
+
+      // Position the Portal Group dynamically in the back corners:
+      const px = isNext ? 10.8 : -10.8;
+      const pz = 7.5;
+      const rotY = isNext ? -Math.PI / 2 : Math.PI / 2;
+
+      portalGroup.position.set(px, 0, pz);
+      portalGroup.rotation.y = rotY;
+
+      // Assign click metadata to all children so raycaster captures them perfectly
+      const actionTag = isNext ? 'next' : 'prev';
+      portalGroup.userData = { portalAction: actionTag };
+      paneMesh.userData = { portalAction: actionTag };
+      leftPost.userData = { portalAction: actionTag };
+      rightPost.userData = { portalAction: actionTag };
+      topBeam.userData = { portalAction: actionTag };
+
+      stateRef.current.portalMeshes.push(paneMesh, leftPost, rightPost, topBeam);
+      scene.add(portalGroup);
+    };
+
+    // SPAWN PREVIOUS & NEXT PORTALS
+    spawnPortal(false, prevHallId, prevHallName || '이전관');
+    spawnPortal(true, nextHallId, nextHallName || '다음관');
+
     // 7. Clean initial load trigger
     forceRefreshArtworks();
-  }, [hall]);
+  }, [hall, prevHallId, nextHallId, prevHallName, nextHallName]);
 
   // Synchronize artworks dynamically when state additions occur
   useEffect(() => {

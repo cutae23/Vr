@@ -51,6 +51,16 @@ export default function App() {
     wallPositions: rawHall.wallPositions.slice(0, activeArtworksLimit)
   };
 
+  const activeHalls = EXHIBITION_HALLS.slice(0, visibleHallsCount);
+  const currentIndex = activeHalls.findIndex(h => h.id === activeHallId);
+  const prevHallIndex = (currentIndex - 1 + activeHalls.length) % activeHalls.length;
+  const nextHallIndex = (currentIndex + 1) % activeHalls.length;
+
+  const prevHallId = activeHalls[prevHallIndex]?.id as HallType;
+  const nextHallId = activeHalls[nextHallIndex]?.id as HallType;
+  const prevHallName = activeHalls[prevHallIndex]?.name || '';
+  const nextHallName = activeHalls[nextHallIndex]?.name || '';
+
   const setActiveArtworksLimit = (limit: number) => {
     setHallsArtworksLimits(prev => ({
       ...prev,
@@ -379,6 +389,11 @@ export default function App() {
             onClearFocus={() => setFocusArtworkId(null)}
             dpadControl={dpadControl}
             nearestArtworkId={nearestArtworkId}
+            onSelectHall={handleSelectHall}
+            prevHallId={prevHallId}
+            nextHallId={nextHallId}
+            prevHallName={prevHallName}
+            nextHallName={nextHallName}
           />
 
           {/* Quick usage Tip bar bellow 3D viewport */}
