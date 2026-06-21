@@ -22,15 +22,38 @@ const LOCAL_STORAGE_KEY = 'vr_gallery_artworks_v3';
 
 export default function App() {
   // Dynamic exhibition planner limits (User requests: Open Hall count and Artwork partition counts per hall)
-  const [visibleHallsCount, setVisibleHallsCount] = useState<number>(3); // Default 3
-  const [activeArtworksLimit, setActiveArtworksLimit] = useState<number>(5); // Default 5
+  const [visibleHallsCount, setVisibleHallsCount] = useState<number>(5); // Show first 5 halls by default, can be adjusted up to 10
 
-  // Current active hall
-  const [activeHallId, setActiveHallId] = useState<HallType>('classic');
+  // Per-hall independent artwork limit state, up to a maximum of 15
+  const [hallsArtworksLimits, setHallsArtworksLimits] = useState<Record<HallType, number>>({
+    modern: 4,
+    classic: 4,
+    neon: 3,
+    nordic: 2,
+    retro: 2,
+    monochrome: 2,
+    vanguard: 2,
+    cyberpunk: 2,
+    zen: 2,
+    renaissance: 2
+  });
+
+  // Current active hall - starts seamlessly in the new modern white gallery hall
+  const [activeHallId, setActiveHallId] = useState<HallType>('modern');
   const rawHall = EXHIBITION_HALLS.find(h => h.id === activeHallId) || EXHIBITION_HALLS[0];
+
+  const activeArtworksLimit = hallsArtworksLimits[activeHallId] || 5;
+
   const currentHall: ExhibitionHall = {
     ...rawHall,
     wallPositions: rawHall.wallPositions.slice(0, activeArtworksLimit)
+  };
+
+  const setActiveArtworksLimit = (limit: number) => {
+    setHallsArtworksLimits(prev => ({
+      ...prev,
+      [activeHallId]: limit
+    }));
   };
 
   // Synchronize active hall index bounds when hall count changes

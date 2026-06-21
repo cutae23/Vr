@@ -12,7 +12,17 @@ export interface Artwork {
   frameType: FrameType;
 }
 
-export type HallType = 'classic' | 'modern' | 'neon' | 'nordic' | 'retro';
+export type HallType = 
+  | 'modern'       // 제1관: 모던 추상 (Modern White)
+  | 'classic'      // 제2관: 루브르 클래식 (Classic Louvre)
+  | 'neon'         // 제3관: 네온 보이드 (Cyber Neon)
+  | 'nordic'       // 제4관: 헬싱키 노르딕 (Nordic Silence)
+  | 'retro'        // 제5관: 아타리 레트로 (Atari Future)
+  | 'monochrome'   // 제6관: 모노크롬 미니멀 (Monochrome Silence)
+  | 'vanguard'     // 제7관: 뱅가드 하이테크 (Vanguard Steel)
+  | 'cyberpunk'    // 제8관: 차세대 사이버펑크 (Cyberpunk Club)
+  | 'zen'          // 제9관: 젠 가든 자연 (Zen Pavilion)
+  | 'renaissance'; // 제10관: 르네상스 마스터 (Renaissance Glow)
 
 export interface ExhibitionHall {
   id: HallType;

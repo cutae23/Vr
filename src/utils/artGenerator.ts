@@ -1,8 +1,10 @@
+import { HallType } from '../types';
+
 /**
  * Generates beautiful, responsive dynamic artwork patterns using HTML Canvas
  * to prevent CORS and standard asset loading issues.
  */
-export function generateProceduralArt(style: 'classic' | 'modern' | 'neon' | 'nordic' | 'retro', title: string): string {
+export function generateProceduralArt(style: HallType, title: string): string {
   const canvas = document.createElement('canvas');
   canvas.width = 800;
   canvas.height = 600;
@@ -79,84 +81,88 @@ export function generateProceduralArt(style: 'classic' | 'modern' | 'neon' | 'no
     ctx.fillRect(0, 0, 800, 600);
 
   } else if (style === 'modern') {
-    // Avant-garde minimalist abstract
-    ctx.fillStyle = '#f5f2eb'; // Warm off-white paper canvas
+    // -------------------------------------------------------------------------
+    // Modern White Minimalist - Warm white gallery canvas, luxury brass gold & grey
+    // -------------------------------------------------------------------------
+    ctx.fillStyle = '#fbfbfc'; // Crisp high-end luxurious pure gallery white
     ctx.fillRect(0, 0, 800, 600);
 
-    // Large abstract color fields
-    const colors = [
-      '#e63946', // Fire red
-      '#1d3557', // Prussian Blue
-      '#ffb703', // Mustard Yellow
-      '#00f5d4', // Teal Abstract
-      '#2a9d8f', // Forest Sage
-      '#111111'  // Ink Black
+    // Pale, high-class architectural tints
+    const whitesPalette = [
+      '#f3f4f6', // Light slate white
+      '#fafaf9', // Oatmeal warm white
+      '#e5e7eb', // Modern soft grey
+      '#fcfbf7', // Pearl ivory
+      '#decbaa'  // Soft brass gold/sand
     ];
 
-    // Select 3 random distinct colors
-    const activeColors = [
-      colors[Math.floor(random() * colors.length)],
-      colors[Math.floor(random() * colors.length)],
-      colors[Math.floor(random() * colors.length)]
-    ];
-
-    // Dynamic geometric elements
+    // Select 3 random light shapes
     ctx.globalAlpha = 0.85;
 
-    // Element 1: Large overlapping circle
-    ctx.fillStyle = activeColors[0];
+    // Element 1: Dynamic large floating circles in white/sand hues
+    ctx.fillStyle = whitesPalette[Math.floor(random() * whitesPalette.length)];
     ctx.beginPath();
-    ctx.arc(250 + random() * 300, 200 + random() * 200, 100 + random() * 120, 0, Math.PI * 2);
+    ctx.arc(320 + random() * 200, 250 + random() * 120, 130 + random() * 90, 0, Math.PI * 2);
     ctx.fill();
 
-    // Element 2: Giant diagonal bar
-    ctx.fillStyle = activeColors[1];
-    ctx.save();
-    ctx.translate(400, 300);
-    ctx.rotate((random() - 0.5) * Math.PI);
-    ctx.fillRect(-350, -30 - random() * 50, 700, 60 + random() * 100);
-    ctx.restore();
+    // Element 2: Intersecting modern warm cream/gold block
+    ctx.fillStyle = '#eadeca'; // Royal cream milk
+    ctx.fillRect(150 + random() * 150, 150 + random() * 150, 200 + random() * 200, 150 + random() * 200);
 
-    // Element 3: Abstract block structure
-    ctx.fillStyle = activeColors[2];
-    ctx.fillRect(100 + random() * 200, 100 + random() * 200, 150 + random() * 200, 150 + random() * 200);
+    // Element 3: Luxurious thin metallic brass gold accent rings/plates
+    ctx.strokeStyle = '#d4af37'; // Luxury Brass Gold leaf
+    ctx.lineWidth = 1.5 + random() * 1.5;
+    ctx.beginPath();
+    ctx.arc(430 + random() * 100, 270 + random() * 80, 80 + random() * 50, 0, Math.PI * 2);
+    ctx.stroke();
 
-    // Splatters & lines
-    ctx.globalAlpha = 1.0;
-    ctx.strokeStyle = '#222222';
-    ctx.lineWidth = 1.5 + random() * 4;
-    for (let l = 0; l < 4; l++) {
+    // Element 4: Floating elegant absolute pure white slab
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.04)';
+    ctx.shadowBlur = 10;
+    ctx.fillRect(200 + random() * 250, 180 + random() * 140, 140 + random() * 150, 140 + random() * 150);
+    ctx.shadowBlur = 0; // Reset shadow
+
+    // Delicate artistic hand sketch ink line for high-contrast balance
+    ctx.strokeStyle = '#374151'; // Charcoal grey
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(100 + random() * 100, 480);
+    ctx.quadraticCurveTo(
+      380 + (random() - 0.5) * 100,
+      120 + random() * 80,
+      600 + random() * 100,
+      140 + random() * 85
+    );
+    ctx.stroke();
+
+    // Splattered gold and charcoal micro fine particles
+    ctx.fillStyle = '#d4af37';
+    for (let di = 0; di < 18; di++) {
       ctx.beginPath();
-      ctx.moveTo(random() * 800, random() * 600);
-      ctx.bezierCurveTo(
-        random() * 800, random() * 600,
-        random() * 800, random() * 600,
-        random() * 800, random() * 600
-      );
-      ctx.stroke();
+      ctx.arc(400 + (random() - 0.5) * 350, 300 + (random() - 0.5) * 250, 1 + random() * 2.5, 0, Math.PI * 2);
+      ctx.fill();
     }
-
-    // Splatter dots
-    ctx.fillStyle = '#111111';
-    for (let d = 0; d < 30; d++) {
+    ctx.fillStyle = '#4b5563';
+    for (let di = 0; di < 10; di++) {
       ctx.beginPath();
-      ctx.arc(random() * 800, random() * 600, 1.5 + random() * 5, 0, Math.PI * 2);
+      ctx.arc(400 + (random() - 0.5) * 350, 300 + (random() - 0.5) * 250, 1 + random() * 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Beautiful canvas texture
-    ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+    // High fidelity subtle canvas cross-stitch texture
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.012)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < 800; i += 8) {
+    for (let tx = 0; tx < 800; tx += 6) {
       ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, 600);
+      ctx.moveTo(tx, 0);
+      ctx.lineTo(tx, 600);
       ctx.stroke();
     }
-    for (let j = 0; j < 600; j += 8) {
+    for (let ty = 0; ty < 600; ty += 6) {
       ctx.beginPath();
-      ctx.moveTo(0, j);
-      ctx.lineTo(800, j);
+      ctx.moveTo(0, ty);
+      ctx.lineTo(800, ty);
       ctx.stroke();
     }
 
@@ -309,9 +315,247 @@ export function generateProceduralArt(style: 'classic' | 'modern' | 'neon' | 'no
       ctx.fillRect(rx, ry, 2.5, 2.5);
     }
 
+  } else if (style === 'monochrome') {
+    // -------------------------------------------------------------------------
+    // Monochrome Minimalist - Concrete gray, pitch charcoal, pure geometric circles
+    // -------------------------------------------------------------------------
+    ctx.fillStyle = '#f1f1f1'; // Smooth concrete gray
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Dynamic horizontal and vertical division lines
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    for (let x = 100; x < 800; x += 100) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 600);
+      ctx.stroke();
+    }
+    for (let y = 100; y < 600; y += 100) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(800, y);
+      ctx.stroke();
+    }
+
+    // Heavy pitch industrial black circles
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = '#171717'; // Deep carbon black
+    ctx.beginPath();
+    ctx.arc(400, 300, 110 + random() * 40, 0, Math.PI * 2);
+    ctx.fill();
+
+    // High balance white overlapping slice
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.arc(380 + random() * 40, 280 + random() * 40, 60 + random() * 30, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fine graphite details
+    ctx.strokeStyle = '#3e3e3e';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(150, 450);
+    ctx.lineTo(650, 150);
+    ctx.stroke();
+
+    // Spattered carbon ink dust
+    ctx.fillStyle = '#171717';
+    for (let i = 0; i < 25; i++) {
+      ctx.beginPath();
+      ctx.arc(200 + random() * 400, 150 + random() * 300, 1 + random() * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+  } else if (style === 'vanguard') {
+    // -------------------------------------------------------------------------
+    // Vanguard - Industrial metal plate, brass screws, structural blueprints
+    // -------------------------------------------------------------------------
+    const mGrad = ctx.createLinearGradient(0, 0, 800, 600);
+    mGrad.addColorStop(0, '#2e3d44'); // Blue metallic
+    mGrad.addColorStop(0.5, '#1e2528'); // Steel body
+    mGrad.addColorStop(1, '#111617'); // Dark cast iron
+    ctx.fillStyle = mGrad;
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Grid wire structure
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.25)'; // Gold wiring
+    ctx.lineWidth = 1;
+    for (let c = 0; c < 8; c++) {
+      ctx.beginPath();
+      ctx.arc(400, 300, c * 60, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Blueprint vector spikes
+    ctx.strokeStyle = '#38bdf8'; // Laser blueprint blue
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < 15; i++) {
+      const theta = (i * Math.PI * 2) / 15 + seed;
+      ctx.moveTo(400, 300);
+      ctx.lineTo(400 + Math.cos(theta) * 250, 300 + Math.sin(theta) * 250);
+    }
+    ctx.stroke();
+
+    // Floating copper panels
+    ctx.fillStyle = 'rgba(194, 120, 3, 0.7)'; // Warm copper
+    ctx.fillRect(280, 200, 240, 200);
+
+    // Hot molten core element
+    const coreGrad = ctx.createRadialGradient(400, 300, 5, 400, 300, 60);
+    coreGrad.addColorStop(0, '#fff');
+    coreGrad.addColorStop(0.3, '#f97316'); // Radiant orange
+    coreGrad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(400, 300, 60, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (style === 'cyberpunk') {
+    // -------------------------------------------------------------------------
+    // Cyberpunk Club - Dynamic glitched noise, acid green and intense violet glows
+    // -------------------------------------------------------------------------
+    ctx.fillStyle = '#05020a'; 
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Neon strobe ribbons
+    const ribbonCount = 20;
+    for (let r = 0; r < ribbonCount; r++) {
+      ctx.fillStyle = r % 2 === 0 ? 'rgba(22, 242, 182, 0.15)' : 'rgba(244, 63, 94, 0.15)'; // Green / Fuchsia glow
+      ctx.fillRect(0, r * 30, 800, 15 + random() * 10);
+    }
+
+    // Digital glitch text vectors
+    ctx.fillStyle = '#16f2b6';
+    ctx.font = '700 36px monospace';
+    ctx.fillText("CORRUPT_STATE_909", 120 + random() * 100, 220 + random() * 40);
+
+    ctx.fillStyle = '#f43f5e';
+    ctx.font = '700 24px monospace';
+    ctx.fillText("HOST_SYS : OK", 220 + random() * 80, 350 + random() * 40);
+
+    // Audio frequency line representations
+    ctx.strokeStyle = '#a855f7'; // Purple laser
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 480);
+    for (let waveX = 0; waveX <= 800; waveX += 20) {
+      const waveY = 460 + Math.sin(waveX * 0.1) * 80 + (random() - 0.5) * 50;
+      ctx.lineTo(waveX, waveY);
+    }
+    ctx.stroke();
+
+    // Pixel digital grid noise
+    ctx.fillStyle = '#ffffff';
+    for (let p = 0; p < 120; p++) {
+      ctx.fillRect(random() * 800, random() * 600, 3, 3);
+    }
+
+  } else if (style === 'zen') {
+    // -------------------------------------------------------------------------
+    // Zen Meditation - moss green, quiet stone circles, sand wave wash
+    // -------------------------------------------------------------------------
+    ctx.fillStyle = '#f4f0e6'; // Warm calming sand cream
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Raked sand ripples (concentric water curves)
+    ctx.strokeStyle = 'rgba(44, 85, 34, 0.08)'; // Fine forest ink
+    ctx.lineWidth = 2.5;
+    for (let cw = 0; cw < 20; cw++) {
+      ctx.beginPath();
+      ctx.arc(450, 300, cw * 22, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Soft moss-green organic balancing stones
+    const mossColors = ['#556b2f', '#46523c', '#608066', '#a1b490'];
+    ctx.globalAlpha = 0.88;
+    for (let st = 0; st < 3; st++) {
+      ctx.fillStyle = mossColors[Math.floor(random() * mossColors.length)];
+      ctx.beginPath();
+      ctx.ellipse(
+        220 + st * 160 + (random() - 0.5) * 40,
+        280 + st * 40 + (random() - 0.5) * 30,
+        50 + random() * 30,
+        70 + random() * 45,
+        (random() - 0.5) * 0.8,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    // Single hand sketched bamboo leaf branch
+    ctx.strokeStyle = '#2d3319';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(600, 600);
+    ctx.quadraticCurveTo(550, 350, 450, 180);
+    ctx.stroke();
+
+    // Balancing ink drops
+    ctx.fillStyle = '#222513';
+    ctx.globalAlpha = 1.0;
+    ctx.beginPath();
+    ctx.arc(450, 140, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (style === 'renaissance') {
+    // -------------------------------------------------------------------------
+    // Renaissance - Dramatic oil clouds, deep mahogany shadows, theatrical spotlight
+    // -------------------------------------------------------------------------
+    const rGrad = ctx.createLinearGradient(0, 0, 0, 600);
+    rGrad.addColorStop(0, '#1c0d02'); // Amber charcoal
+    rGrad.addColorStop(0.4, '#4c2512'); // Rich deep clay sienna
+    rGrad.addColorStop(0.8, '#2a0c0c'); // Royal dramatic crimson
+    rGrad.addColorStop(1, '#0e0404'); // Pitch shadow
+    ctx.fillStyle = rGrad;
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Warm candle lights shining through religious-like ceiling archway
+    const candleCX = 400 + (random() - 0.5) * 150;
+    const candleCY = 180 + (random() - 0.5) * 85;
+    const glowRad = 150 + random() * 100;
+    const lightGlow = ctx.createRadialGradient(candleCX, candleCY, 5, candleCX, candleCY, glowRad);
+    lightGlow.addColorStop(0, 'rgba(254, 215, 170, 0.9)'); // Warm amber gold
+    lightGlow.addColorStop(0.4, 'rgba(234, 88, 12, 0.45)'); // Fire glow
+    lightGlow.addColorStop(1, 'rgba(234, 88, 12, 0)');
+    ctx.fillStyle = lightGlow;
+    ctx.beginPath();
+    ctx.arc(candleCX, candleCY, glowRad, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Heavy baroque impasto texture clouds
+    ctx.globalAlpha = 0.45;
+    for (let c = 0; c < 5; c++) {
+      ctx.fillStyle = c % 2 === 0 ? '#451a03' : '#7f1d1d';
+      ctx.beginPath();
+      ctx.arc(200 + random() * 400, 250 + random() * 200, 80 + random() * 110, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Classic circular halo of sacred light
+    ctx.strokeStyle = 'rgba(253, 224, 71, 0.28)'; // Golden sacred halo
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(candleCX, candleCY, 45, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Majestic dark oil craquelure cracks
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 0.65;
+    for (let crack = 0; crack < 30; crack++) {
+      ctx.beginPath();
+      ctx.moveTo(random() * 800, random() * 600);
+      ctx.lineTo(random() * 800, random() * 600);
+      ctx.stroke();
+    }
+
   } else {
     // -------------------------------------------------------------------------
-    // Neon Cyber Grid - High-tech futuristic holographic digital pulses
+    // Neon Cyber Grid - High-tech futuristic holographic digital pulses (Fallback Neon)
     // -------------------------------------------------------------------------
     ctx.fillStyle = '#0a0a14'; // Extreme deep violet-black
     ctx.fillRect(0, 0, 800, 600);
@@ -348,7 +592,7 @@ export function generateProceduralArt(style: 'classic' | 'modern' | 'neon' | 'no
     ctx.arc(sunCX, sunCY, sunRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Dark slice grooves (classic synthwave sun slices)
+    // Dark slice grooves
     ctx.fillStyle = '#0a0a14';
     for (let sliceY = sunCY - sunRadius; sliceY < sunCY + sunRadius; sliceY += 24) {
       const height = (sliceY - (sunCY - sunRadius)) / 30 + 1.5;
@@ -357,7 +601,7 @@ export function generateProceduralArt(style: 'classic' | 'modern' | 'neon' | 'no
       }
     }
 
-    // Electric digital mountain peaks or equalizer lines
+    // Electric digital mountain peaks
     ctx.strokeStyle = 'rgba(0, 245, 255, 0.85)';
     ctx.shadowColor = 'rgba(0, 245, 255, 0.6)';
     ctx.shadowBlur = 10;
@@ -378,14 +622,6 @@ export function generateProceduralArt(style: 'classic' | 'modern' | 'neon' | 'no
       ctx.beginPath();
       const nodeY = 240 + Math.sin(nx * 0.05 + seed) * 60 + random() * 40;
       ctx.arc(nx, nodeY, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Neon dust stars
-    ctx.fillStyle = '#00f5d4';
-    for (let sd = 0; sd < 40; sd++) {
-      ctx.beginPath();
-      ctx.arc(random() * 800, random() * 200, 1 + random() * 2, 0, Math.PI * 2);
       ctx.fill();
     }
   }

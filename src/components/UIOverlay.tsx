@@ -281,23 +281,23 @@ export default function UIOverlay({
             <div className="flex justify-between items-center text-slate-300">
               <span className="font-semibold text-[11px]">개방할 전시장 관 수 (Visible Halls)</span>
               <span className="text-[10px] px-2 py-0.5 bg-slate-950 border border-slate-800 text-emerald-400 rounded-md font-mono font-bold">
-                {visibleHallsCount}개 관 개방
+                {visibleHallsCount}개 관 개방 (최대 10개)
               </span>
             </div>
             <input 
               type="range" 
               min="1" 
-              max="5" 
+              max="10" 
               value={visibleHallsCount} 
               onChange={(e) => setVisibleHallsCount(Number(e.target.value))}
               className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
             />
             <div className="flex justify-between text-[8px] text-slate-500 font-mono">
               <span>제1관</span>
-              <span>제2관</span>
               <span>제3관</span>
-              <span>제4관</span>
-              <span>제5관 (전체)</span>
+              <span>제5관</span>
+              <span>제8관</span>
+              <span>제10관 (전체)</span>
             </div>
           </div>
 
@@ -306,24 +306,23 @@ export default function UIOverlay({
             <div className="flex justify-between items-center text-slate-300">
               <span className="font-semibold text-[11px]">관람 벽면 설치 수 (Max Artworks per Hall)</span>
               <span className="text-[10px] px-2 py-0.5 bg-slate-950 border border-slate-800 text-indigo-400 rounded-md font-mono font-bold">
-                {activeArtworksLimit}개 벽면 가동
+                {activeArtworksLimit}개 벽면 가동 (최대 15개)
               </span>
             </div>
             <input 
               type="range" 
               min="1" 
-              max="5" 
+              max="15" 
               value={activeArtworksLimit} 
               onChange={(e) => setActiveArtworksLimit(Number(e.target.value))}
               className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-indigo-500"
               style={{ accentColor: '#6366f1' }}
             />
             <div className="flex justify-between text-[8px] text-slate-500 font-mono">
-              <span>미니멀 (1개)</span>
-              <span>트윈 (2개)</span>
-              <span>센터 크로스 (3개)</span>
-              <span>쿼드 (4개)</span>
-              <span>맥시멈 (5개)</span>
+              <span>최소 (1개)</span>
+              <span>스탠다드 (5개)</span>
+              <span>미디움 (10개)</span>
+              <span>맥시멈 (15개)</span>
             </div>
           </div>
         </div>
