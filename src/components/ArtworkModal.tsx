@@ -41,7 +41,7 @@ export default function ArtworkModal({
     setIsAnalyzing(true);
     setErrorMsg('');
     try {
-      const savedKey = localStorage.getItem("gemini_custom_api_key") || "";
+      const savedKey = localStorage.getItem("gemini_custom_api_key") || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
       const headers: Record<string, string> = {
         "Content-Type": "application/json"
       };
@@ -49,34 +49,96 @@ export default function ArtworkModal({
         headers["x-gemini-api-key"] = savedKey;
       }
 
-      const res = await fetch("/api/analyze-artwork", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ image: base64Image, currentHallId: hallStyle })
-      });
+      let data: any = null;
+      let handledByClient = false;
 
-      if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || "서버 분석 요청에 실패했습니다.");
+      try {
+        const res = await fetch("/api/analyze-artwork", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ image: base64Image, currentHallId: hallStyle })
+        });
+
+        if (res.status === 404 || res.status === 405 || res.status === 500) {
+          // If server endpoints 404/not available (like on Vercel's static router), use direct client-side fallback
+          console.warn(`Server API returned status ${res.status}. Falling back to dynamic client-side direct calling...`);
+          handledByClient = true;
+        } else if (!res.ok) {
+          const errJson = await res.json();
+          throw new Error(errJson.error || "서버 분석 요청에 실패했습니다.");
+        } else {
+          data = await res.json();
+        }
+      } catch (fetchErr: any) {
+        console.warn("Express endpoint is unreachable. Falling back to secure direct client-side Gemini call...", fetchErr);
+        handledByClient = true;
       }
 
-      const data = await res.json();
-      if (data.title) setTitle(data.title.trim());
-      if (data.artist) setArtist(data.artist.trim());
-      if (data.year) setYear(data.year.toString().trim());
-      if (data.description) setDescription(data.description.trim());
-      if (data.width && typeof data.width === 'number') {
-        setWidth(Math.max(0.5, Math.min(data.width, maxDimensions.width)));
+      if (handledByClient) {
+        // Direct Client-Side Call Fallback for Vercel
+        const finalKey = savedKey || "";
+        if (!finalKey) {
+          throw new Error("서버 API가 연동되지 않는 정적 배포(Vercel) 환경입니다. 대시보드 하단의 '개인 API Key 입력란'에 키를 입력하거나, .env에 VITE_GEMINI_API_KEY를 추가해주세요.");
+        }
+
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({ apiKey: finalKey });
+
+        const parts = base64Image.split(",");
+        const mime = parts[0].match(/data:(.*?);/)?.[1] || "image/png";
+        const base64Data = parts[1] || parts[0];
+
+        const promptText = `현재 가상 전시장 테마는 '${hallStyle}' 입니다.
+이 업로드된 전시 작품 이미지를 감상한 전문가 큐레이터 관점에서 다음 6가지 항목을 분석해 한국어로 정밀하게 채워진 JSON 데이터만 리턴하세요. 다른 서문, 수식어, Markdown 백틱(\`\`\`) 등은 일절 제외하고 순수 파싱 가능한 JSON 텍스트 오브젝트 하나만 리턴해야 합니다.
+
+출력 JSON 스펙:
+{
+  "title": "분석된 작품 제목 (한국어, 신비롭고 어울리게 15자 내외)",
+  "artist": "가상 예술가명 (감각적인 동서양 이름 구성)",
+  "year": "제작년도 (2020~2026 사이의 연도 숫자)",
+  "description": "한글 3~4문장의 극적이고 시적이며 전문적인 3D 공간 큐레이션 및 작품 도슨트 해설",
+  "width": 1.5, // 1.5 ~ 3.0 사이의 추천 전시 가로 치수 (실수 단위: 미터)
+  "height": 1.2, // 1.0 ~ 2.2 사이의 추천 전시 세로 치수 (실수 단위: 미터)
+  "frameType": "다음 5개 액자 스타일 키 중 하나: 'none', 'thin-black', 'ornate-gold', 'wooden', 'cyber-neon'"
+}`;
+
+        const apiModel = "gemini-3.5-flash";
+        const response = await ai.models.generateContent({
+          model: apiModel,
+          contents: [
+            promptText,
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: mime
+              }
+            }
+          ]
+        });
+
+        const rawText = response.text || "";
+        const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        data = JSON.parse(cleanText);
       }
-      if (data.height && typeof data.height === 'number') {
-        setHeight(Math.max(0.5, Math.min(data.height, maxDimensions.height)));
-      }
-      if (data.frameType) {
-        setFrameType(data.frameType);
+
+      if (data) {
+        if (data.title) setTitle(data.title.trim());
+        if (data.artist) setArtist(data.artist.trim());
+        if (data.year) setYear(data.year.toString().trim());
+        if (data.description) setDescription(data.description.trim());
+        if (data.width && typeof data.width === 'number') {
+          setWidth(Math.max(0.5, Math.min(data.width, maxDimensions.width)));
+        }
+        if (data.height && typeof data.height === 'number') {
+          setHeight(Math.max(0.5, Math.min(data.height, maxDimensions.height)));
+        }
+        if (data.frameType) {
+          setFrameType(data.frameType);
+        }
       }
     } catch (e: any) {
       console.error(e);
-      setErrorMsg(`AI 정보 분석 실패: ${e.message || "서버 연결에 실패하였습니다. Secrets의 GEMINI_API_KEY 구성을 확인해주세요."}`);
+      setErrorMsg(`AI 정보 분석 실패: ${e.message || "서버 혹은 클라이언트 API 호출에 실패하였습니다. 비밀키 구성을 확인해주세요."}`);
     } finally {
       setIsAnalyzing(false);
     }

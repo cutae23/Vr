@@ -107,9 +107,13 @@ export default function App() {
     turnRight: false
   });
 
-  // Persist edits to localStorage
+  // Persist edits to localStorage safely
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(galleryArtworks));
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(galleryArtworks));
+    } catch (e) {
+      console.warn("Failed to persist artworks to localStorage (most likely QuotaExceededError due to large base64 upload limit). Visuals will still update in-memory perfectly!", e);
+    }
   }, [galleryArtworks]);
 
   // Synchronize dynamic background audio theme when user switches halls

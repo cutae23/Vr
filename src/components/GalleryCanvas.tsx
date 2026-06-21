@@ -59,6 +59,7 @@ export default function GalleryCanvas({
     roomBoundaries: { minX: number; maxX: number; minZ: number; maxZ: number };
     animationFrameId: number | null;
     activeHallId: HallType | null;
+    activeWallCount: number | null;
   }>({
     scene: null,
     camera: null,
@@ -72,7 +73,8 @@ export default function GalleryCanvas({
     mouse: { isDown: false, prevX: 0, prevY: 0 },
     roomBoundaries: { minX: -10, maxX: 10, minZ: -10, maxZ: 10 },
     animationFrameId: null,
-    activeHallId: null
+    activeHallId: null,
+    activeWallCount: null
   });
 
   const [isInitialized, setIsInitialized] = useState(false);
@@ -366,15 +368,24 @@ export default function GalleryCanvas({
     };
   }, []);
 
-  // Update Hall theme structures and active walls (Triggered when hall changes)
+  // Update Hall theme structures and active walls (Triggered when hall changes or artwork limits change)
   useEffect(() => {
     const scene = stateRef.current.scene;
     const player = stateRef.current.player;
     if (!scene) return;
 
     // Prevent duplicate reload
-    if (stateRef.current.activeHallId === hall.id) return;
+    if (
+      stateRef.current.activeHallId === hall.id &&
+      stateRef.current.activeWallCount === hall.wallPositions.length
+    ) {
+      return;
+    }
+
+    const isDifferentHall = stateRef.current.activeHallId !== hall.id;
+
     stateRef.current.activeHallId = hall.id;
+    stateRef.current.activeWallCount = hall.wallPositions.length;
 
     // 1. Remove older objects to reset space
     const toRemove: THREE.Object3D[] = [];
@@ -384,11 +395,13 @@ export default function GalleryCanvas({
     });
     toRemove.forEach(child => scene.remove(child));
 
-    // Reset player position safely on hall transition
-    player.x = 0;
-    player.z = 7;
-    player.yaw = 0;
-    player.pitch = 0;
+    if (isDifferentHall) {
+      // Reset player position safely on hall transition only
+      player.x = 0;
+      player.z = 7;
+      player.yaw = 0;
+      player.pitch = 0;
+    }
 
     // Reset collections
     stateRef.current.artMeshes.clear();
@@ -543,21 +556,8 @@ export default function GalleryCanvas({
       maxZ: roomSize / 2
     };
 
-    // 4. Construct Decorative architectural geometries (Classic vault pillars, Neon grid pillars etc.)
+    // 4. Construct Decorative architectural geometries (Classic vault pillars, Neon grid pillars etc.) - Pillars and floating blocks removed as requested to maximize artwork visibility
     if (hall.id === 'classic') {
-      // 8 Pillars along the wall edges
-      const pillarGeo = new THREE.CylinderGeometry(0.35, 0.45, hall.ceilingHeight, 16);
-      const pillarMat = new THREE.MeshStandardMaterial({ color: 0xecdcb5, roughness: 0.6 });
-      const pillarPositions = [
-        [-11.5, -11.5], [11.5, -11.5], [-11.5, 11.5], [11.5, 11.5],
-        [-11.5, 0], [11.5, 0]
-      ];
-      pillarPositions.forEach(([px, pz]) => {
-        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-        pillar.position.set(px, hall.ceilingHeight / 2, pz);
-        scene.add(pillar);
-      });
-
       // Elegant golden molding lines around wall edges
       const moldingGeo = new THREE.BoxGeometry(0.15, 0.15, roomSize);
       const moldingMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
@@ -569,18 +569,6 @@ export default function GalleryCanvas({
       rightMolding.position.x = 11.9;
       scene.add(rightMolding);
 
-    } else if (hall.id === 'modern') {
-      // Abstract geometric floating blocks
-      const blockMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.2 });
-      for (let b = 0; b < 4; b++) {
-        const bGeo = new THREE.BoxGeometry(1.5, hall.ceilingHeight, 1.5);
-        const block = new THREE.Mesh(bGeo, blockMat);
-        block.position.set(-9 + Math.random() * 18, hall.ceilingHeight / 2, -9 + Math.random() * 18);
-        // Ensure not too close to player center position
-        if (block.position.distanceTo(new THREE.Vector3(0, hall.ceilingHeight / 2, 7)) > 3) {
-          scene.add(block);
-        }
-      }
     } else if (hall.id === 'neon') {
       // Luminous LED grid rails on the ceiling
       const railMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
@@ -1037,58 +1025,7 @@ export default function GalleryCanvas({
         </div>
       )}
 
-      {/* Controls guide HUD overlay (Auto dismisses or toggleable) */}
-      {controlsGuide && (
-        <div className="absolute top-4 left-4 max-w-sm bg-slate-900/90 backdrop-blur-md border border-slate-800 p-4 rounded-xl text-xs text-slate-300 shadow-xl transition-all duration-300 z-10 select-none">
-          <div className="flex items-center justify-between mb-2">
-            <h5 className="font-bold text-slate-100 flex items-center gap-1.5">
-              <HelpCircle size={14} className="text-indigo-400" />
-              <span>3D VR 미술관 관람 가이드</span>
-            </h5>
-            <button 
-              onClick={() => setControlsGuide(false)}
-              className="text-[10px] text-slate-500 hover:text-slate-350 bg-slate-950 border border-slate-850 px-1.5 py-0.5 rounded cursor-pointer"
-            >
-              닫기
-            </button>
-          </div>
-          
-          <div className="space-y-2 mt-2">
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              마우스를 클릭&드래그하여 주위를 둘러보고, 작품 또는 빈 벽면을 직접 클릭하여 나만의 이미지를 액자로 마운트하세요.
-            </p>
-            <div className="grid grid-cols-2 gap-2 border-t border-slate-850 pt-2 text-[10px] text-slate-400">
-              <div className="flex items-center gap-1">
-                <Move size={12} className="text-emerald-400" />
-                <span>키보드 <strong>W, A, S, D</strong> / <strong>방향키</strong></span>
-              </div>
-              <div className="flex items-center gap-1">
-                <ZoomIn size={12} className="text-indigo-400" />
-                <span>시야 회전 <strong>마우스 드래그</strong></span>
-              </div>
-              <div className="flex items-center gap-1">
-                <RotateCw size={12} className="text-pink-400" />
-                <span>좌우 회전 <strong>Q, E 키</strong></span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Sparkles size={12} className="text-yellow-400" />
-                <span>작품 목록 <strong>도슨트 자동 이동</strong></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Re-enable help guide button */}
-      {!controlsGuide && (
-        <button 
-          onClick={() => setControlsGuide(true)}
-          className="absolute top-4 left-4 p-2 bg-slate-900/95 hover:bg-slate-800 border border-slate-800/80 rounded-xl text-slate-400 hover:text-white transition shadow-lg z-10 cursor-pointer"
-          title="관람 가이드 열기"
-        >
-          <HelpCircle size={18} />
-        </button>
-      )}
+      {/* Controls guide HUD overlay and Help icon removed as requested */}
 
       {/* Visual Indicator HUD overlay on top-right: Showing interactive tag */}
       <div className="absolute top-3 right-3 px-3 py-1 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-full text-[11px] text-slate-400 flex items-center gap-2 pointer-events-none select-none z-10">

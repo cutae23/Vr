@@ -21,9 +21,7 @@ import {
   Eye,
   EyeOff,
   Check,
-  Settings,
-  ExternalLink,
-  Terminal
+  Settings
 } from 'lucide-react';
 import { EXHIBITION_HALLS } from '../data';
 
@@ -406,51 +404,7 @@ export default function UIOverlay({
           </div>
         </div>
 
-        {/* 3. CLI Installation Guide */}
-        <div className="bg-slate-950/50 rounded-xl border border-slate-850 p-3.5 space-y-2.5" id="cli_installation_card">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-            <Terminal size={13} className="text-indigo-400 shrink-0" />
-            <span>내 컴퓨터 로컬 자가 구동 / 설치 방법</span>
-          </div>
-          
-          <div className="space-y-2 text-[10px] font-mono text-slate-400 leading-normal divide-y divide-slate-900">
-            <div className="pb-1.5">
-              <span className="text-indigo-400 font-bold block mb-0.5">Step 1. 사전 준비 및 패키지 설치</span>
-              <p className="text-slate-500 text-[9px] mb-1">앱 폴더를 다운로드/압축해제 후, 터미널 터치 패널에서 패키지를 설치하십시오.</p>
-              <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-850/60 text-slate-300 select-all font-semibold">
-                npm install
-              </div>
-            </div>
 
-            <div className="py-2">
-              <span className="text-pink-400 font-bold block mb-0.5">Step 2. 로컬 환경 보안키 파일 추가 (.env)</span>
-              <p className="text-slate-500 text-[9px] mb-1">최상위 디렉토리에 <b>.env</b> 파일을 생성 후 개인키를 기록하십시오.</p>
-              <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-850/60 text-slate-300 select-all font-semibold leading-relaxed">
-                GEMINI_API_KEY=AI_STUDIO에서_받은_비밀키
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <span className="text-amber-400 font-bold block mb-0.5">Step 3. 로컬 풀스택 개발 서버 실행</span>
-              <p className="text-slate-500 text-[9px] mb-1">서버 및 클라이언트를 동시에 컴파일하는 핫 리로드 Vite 서버 가동</p>
-              <div className="bg-slate-950 px-2.5 py-1.5 rounded border border-slate-850/60 text-slate-300 select-all font-semibold">
-                npm run dev
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-1 flex justify-end">
-            <a 
-              href="https://aistudio.google.com/" 
-              target="_blank" 
-              rel="noreferrer referrer" 
-              className="group text-[9px] text-pink-400 hover:text-pink-300 flex items-center gap-1 font-bold transition"
-            >
-              <span>무료 Gemini API Key 발급받기</span>
-              <ExternalLink size={9} className="group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          </div>
-        </div>
       </div>
 
       {/* 2. Interactive Guided Curation Tour (Artworks Walkthrough) */}
