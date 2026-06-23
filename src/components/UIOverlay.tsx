@@ -17,10 +17,6 @@ import {
   Sparkles,
   Bookmark,
   BookOpen,
-  Key,
-  Eye,
-  EyeOff,
-  Check,
   Settings
 } from 'lucide-react';
 import { EXHIBITION_HALLS } from '../data';
@@ -113,22 +109,7 @@ export default function UIOverlay({
     }
   }, [playerPosition.x, playerPosition.z, currentHall.id]);
 
-  // Gemini Custom API Configuration client-side state
-  const [customKey, setCustomKey] = useState(() => localStorage.getItem("gemini_custom_api_key") || "");
-  const [showKey, setShowKey] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(false);
 
-  const handleSaveKey = (val: string) => {
-    const trimmed = val.trim();
-    setCustomKey(trimmed);
-    if (trimmed) {
-      localStorage.setItem("gemini_custom_api_key", trimmed);
-    } else {
-      localStorage.removeItem("gemini_custom_api_key");
-    }
-    setSaveStatus(true);
-    setTimeout(() => setSaveStatus(false), 2000);
-  };
 
   // Draw 2D Minimap dynamically
   useEffect(() => {
@@ -400,72 +381,20 @@ export default function UIOverlay({
         </div>
 
         {/* 1. Api Info Brief */}
-        <div className="space-y-2 text-xs leading-relaxed text-slate-400 border-b border-slate-800/60 pb-3.5">
+        <div className="space-y-2 text-xs leading-relaxed text-slate-400">
           <p>
             본 갤러리는 이미지를 지능적으로 분석하여 작품명, 작가명, 설명 및 어울리는 액자 스타일을 자동 큐레이션해주는 <strong>Google Gemini 3.5 Flash API</strong>를 채택하고 있습니다.
           </p>
           <div className="flex flex-col gap-1.5 mt-2 p-3 bg-slate-950/80 rounded-xl border border-slate-850/60 text-[11px]">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold text-[11px]">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Q. 요금이 청구되는 유료 API인가요?</span>
+              <span>Vercel 배포 및 환경 설정 완료</span>
             </div>
             <p className="text-slate-400 text-[10px] leading-relaxed">
-              <strong>아닙니다!</strong> Gemini 3.5 Flash는 무료 한도(분당 15요청) 내에서 <strong>완전히 무료</strong>로 가동됩니다.
-            </p>
-            <p className="text-slate-500 text-[9px] leading-relaxed">
-              * 추가적으로 API 없이도 무인 가동할 수 있도록 <strong>오프라인 고성능 자체 템플릿 큐레이팅</strong>을 탑재하여, 설정 없이도 전체 기능을 영구히 무료로 즐길 수 있습니다.
+              Vercel 대시보드에 구성된 <strong>GEMINI_API_KEY</strong> 환경변수를 연동하여 안전하게 서버사이드에서 AI 분석이 수행됩니다.
             </p>
           </div>
         </div>
-
-        {/* 2. Personal Key Slot */}
-        <div className="space-y-2" id="personal_api_key_section">
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <Key size={13} className="text-amber-400" />
-              개인 API Key 입력란 (Personal Key)
-            </span>
-            <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1 font-bold ${
-              customKey 
-                ? 'bg-emerald-950/60 border-emerald-900 text-emerald-400' 
-                : 'bg-indigo-950/50 border-indigo-900/60 text-indigo-400'
-            }`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${customKey ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
-              {customKey ? '개인키 연동중' : '기본 서버 API 가동'}
-            </span>
-          </div>
-
-          <div className="relative">
-            <input
-              type={showKey ? "text" : "password"}
-              value={customKey}
-              onChange={(e) => handleSaveKey(e.target.value)}
-              placeholder="Google AI Studio에서 발급받은 GEMINI_API_KEY 입력"
-              className="w-full bg-slate-950 hover:bg-slate-950/80 focus:bg-slate-950 border border-slate-800 focus:border-slate-700/85 focus:outline-none rounded-xl py-2 pl-3.5 pr-12 text-[11px] font-mono text-slate-200 placeholder-slate-600 transition"
-            />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 transition"
-              title={showKey ? "가리기" : "보여주기"}
-            >
-              {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-[9px] text-slate-500">
-              * 입력한 비밀키는 안전하게 기기 웹브라우저 로컬(localStorage)에만 저장됩니다.
-            </span>
-            {saveStatus && (
-              <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1 animate-pulse">
-                <Check size={11} />
-                로컬 저장 완료!
-              </span>
-            )}
-          </div>
-        </div>
-
-
       </div>
 
       {/* 2. Interactive Guided Curation Tour (Artworks Walkthrough) */}

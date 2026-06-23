@@ -42,7 +42,7 @@ export default function ArtworkModal({
     setIsAnalyzing(true);
     setErrorMsg('');
     try {
-      const savedKey = localStorage.getItem("gemini_custom_api_key") || (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+      const savedKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
       const headers: Record<string, string> = {
         "Content-Type": "application/json"
       };
@@ -79,7 +79,7 @@ export default function ArtworkModal({
         // Direct Client-Side Call Fallback for Vercel
         const finalKey = savedKey || "";
         if (!finalKey) {
-          throw new Error("서버 API가 연동되지 않는 정적 배포(Vercel) 환경입니다. 대시보드 하단의 '개인 API Key 입력란'에 키를 입력하거나, .env에 VITE_GEMINI_API_KEY를 추가해주세요.");
+          throw new Error("서버 API 연동에 실패했습니다. Vercel 환경 변수에 GEMINI_API_KEY가 올바르게 설정되어 있는지 대시보드를 확인해주세요.");
         }
 
         const { GoogleGenAI } = await import("@google/genai");
