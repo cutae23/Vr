@@ -60,17 +60,25 @@ export default function ArtworkModal({
           body: JSON.stringify({ image: base64Image, currentHallId: hallStyle })
         });
 
-        if (res.status === 404 || res.status === 405 || res.status === 500) {
+        if (res.status === 404 || res.status === 405) {
           // If server endpoints 404/not available (like on Vercel's static router), use direct client-side fallback
           console.warn(`Server API returned status ${res.status}. Falling back to dynamic client-side direct calling...`);
           handledByClient = true;
         } else if (!res.ok) {
-          const errJson = await res.json();
-          throw new Error(errJson.error || "서버 분석 요청에 실패했습니다.");
+          let errMsg = "서버 분석 요청에 실패했습니다.";
+          try {
+            const errJson = await res.json();
+            errMsg = errJson.error || errMsg;
+          } catch (_) {}
+          throw new Error(errMsg);
         } else {
           data = await res.json();
         }
       } catch (fetchErr: any) {
+        // If it's a specific custom error from the server, rethrow it directly so the user sees the real message!
+        if (fetchErr instanceof Error && !fetchErr.message.includes("Failed to fetch") && !fetchErr.message.includes("network") && !fetchErr.message.includes("fetch")) {
+          throw fetchErr;
+        }
         console.warn("Express endpoint is unreachable. Falling back to secure direct client-side Gemini call...", fetchErr);
         handledByClient = true;
       }
