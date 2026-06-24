@@ -167,7 +167,11 @@ async function startServer() {
       res.json(parsedResult);
     } catch (error: any) {
       console.error("Error analyzing artwork with Gemini:", error);
-      res.status(500).json({ error: error.message || "Failed to analyze artwork. Ensure GEMINI_API_KEY is configured." });
+      let errMsg = error.message || "Failed to analyze artwork. Ensure GEMINI_API_KEY is configured.";
+      if (errMsg.includes("quota") || errMsg.includes("429") || errMsg.includes("exhausted") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("Limit")) {
+        errMsg = "구글 Gemini API 무료 한도(분당 요청 횟수 초과)에 일시적으로 도달했습니다. 구글 서버의 무료 플랜 안전 제한이므로, 약 10초~1분 정도 잠시만 기다리신 후 다시 업로드(시도)하시면 정상적으로 작동합니다.";
+      }
+      res.status(500).json({ error: errMsg });
     }
   });
 
