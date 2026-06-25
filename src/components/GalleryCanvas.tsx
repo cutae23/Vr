@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Artwork, ExhibitionHall, HallType, PlayerPosition } from '../types';
-import { Eye, HelpCircle, Move, RotateCw, RotateCcw, Sparkles, ZoomIn, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, HelpCircle, Move, RotateCw, RotateCcw, Sparkles, ZoomIn, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 
 interface GalleryCanvasProps {
   hall: ExhibitionHall;
@@ -96,6 +96,50 @@ export default function GalleryCanvas({
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [controlsGuide, setControlsGuide] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      // Trigger canvas resize update on fullscreen change
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 100);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    try {
+      if (!document.fullscreenElement) {
+        if (containerRef.current.requestFullscreen) {
+          containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any).webkitRequestFullscreen) {
+          (containerRef.current as any).webkitRequestFullscreen();
+        } else {
+          // Fallback if APIs are not supported in this nested preview iframe environment
+          setIsFullscreen(true);
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        } else {
+          setIsFullscreen(false);
+        }
+      }
+    } catch (e) {
+      console.warn("Fullscreen request failed, applying high-fidelity layout fallback:", e);
+      setIsFullscreen(!isFullscreen);
+    }
+  };
 
   // Synchronize dpad control state and callback to avoid stale closures under empty dependency array of WebGL mount
   const dpadRef = useRef(dpadControl);
@@ -1784,7 +1828,11 @@ export default function GalleryCanvas({
   };
 
   return (
-    <div className="relative w-full h-[460px] sm:h-[540px] md:h-[600px] bg-slate-950 rounded-2xl overflow-hidden shadow-inner border border-slate-900" ref={containerRef} id="canvas_container">
+    <div className={`relative w-full bg-slate-950 overflow-hidden shadow-inner border border-slate-900 transition-all duration-300 ${
+      isFullscreen 
+        ? 'fixed inset-0 w-screen h-screen z-50 rounded-none border-none' 
+        : 'h-[460px] sm:h-[540px] md:h-[600px] rounded-2xl'
+    }`} ref={containerRef} id="canvas_container">
       
       {/* ThreeJS HTML Canvas target */}
       <canvas className="absolute inset-0 w-full h-full block cursor-grab active:cursor-grabbing outline-none" tabIndex={0} ref={canvasRef} id="gallery_3d_canvas" />
@@ -1814,10 +1862,21 @@ export default function GalleryCanvas({
         );
       })()}
 
-      {/* Visual Indicator HUD overlay on top-right: Showing interactive tag */}
-      <div className="absolute top-3 right-3 px-3 py-1 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-full text-[11px] text-slate-400 flex items-center gap-2 pointer-events-none select-none z-10">
-        <Eye size={12} className="text-[#3b82f6] animate-pulse" />
-        <span>마이크로 돔 가상 회전 가동 됨</span>
+      {/* Visual Indicator HUD overlay on top-right: Showing interactive tag & Fullscreen toggle */}
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-30">
+        <div className="hidden sm:flex px-3 py-1.5 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-xl text-[11px] text-slate-400 items-center gap-2 pointer-events-none select-none">
+          <Eye size={12} className="text-[#3b82f6] animate-pulse" />
+          <span>마이크로 돔 가상 회전 가동 됨</span>
+        </div>
+        
+        <button
+          onClick={toggleFullscreen}
+          className="pointer-events-auto px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white backdrop-blur-md border border-indigo-500/30 rounded-xl text-[11px] flex items-center gap-1.5 font-semibold transition shadow-[0_0_15px_rgba(99,102,241,0.2)] cursor-pointer"
+          title="전체화면 토글 (Toggle Fullscreen)"
+        >
+          {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          <span>{isFullscreen ? "화면 축소" : "VR 전체화면"}</span>
+        </button>
       </div>
 
       {/* Immersive Beautiful Transparent HUD Virtual Controller (for excellent mobile/phone usability) */}

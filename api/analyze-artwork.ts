@@ -24,12 +24,13 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "No image payload supplied." });
     }
 
-    // Try reading GEMINI_API_KEY from environment variables (provided securely in Vercel dashboard)
-    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    // Try reading custom client key from headers, otherwise use environment variables
+    const customKey = req.headers["x-gemini-api-key"];
+    const apiKey = customKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     
     if (!apiKey) {
       return res.status(500).json({ 
-        error: "GEMINI_API_KEY가 존재하지 않습니다. Vercel 대시보드 -> Settings -> Environment Variables에 GEMINI_API_KEY를 추가하고 다시 배포해주세요." 
+        error: "GEMINI_API_KEY가 존재하지 않습니다. Vercel 대시보드 -> Settings -> Environment Variables에 GEMINI_API_KEY를 추가하거나, 화면 하단의 '개인 API Key 입력란'에 키를 입력해주세요." 
       });
     }
 

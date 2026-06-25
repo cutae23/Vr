@@ -17,6 +17,10 @@ import {
   Sparkles,
   Bookmark,
   BookOpen,
+  Key,
+  Eye,
+  EyeOff,
+  Check,
   Settings
 } from 'lucide-react';
 import { EXHIBITION_HALLS } from '../data';
@@ -107,10 +111,22 @@ export default function UIOverlay({
       }
       trailRef.current.push({ x: cx, z: cz, count: 1 });
     }
-  }, [playerPosition.x, playerPosition.z, currentHall.id]);
+  }, [playerPosition.x, playerPosition.z, currentHall.id]);  // Gemini Custom API Configuration client-side state
+  const [customKey, setCustomKey] = useState(() => localStorage.getItem("gemini_custom_api_key") || "");
+  const [showKey, setShowKey] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(false);
 
-
-
+  const handleSaveKey = (val: string) => {
+    const trimmed = val.trim();
+    setCustomKey(trimmed);
+    if (trimmed) {
+      localStorage.setItem("gemini_custom_api_key", trimmed);
+    } else {
+      localStorage.removeItem("gemini_custom_api_key");
+    }
+    setSaveStatus(true);
+    setTimeout(() => setSaveStatus(false), 2000);
+  };
   // Draw 2D Minimap dynamically
   useEffect(() => {
     const canvas = minimapCanvasRef.current;
@@ -388,11 +404,80 @@ export default function UIOverlay({
           <div className="flex flex-col gap-1.5 mt-2 p-3 bg-slate-950/80 rounded-xl border border-slate-850/60 text-[11px]">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold text-[11px]">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Vercel 배포 및 환경 설정 완료</span>
+              <span>서버사이드 API 연동 작동 중</span>
             </div>
             <p className="text-slate-400 text-[10px] leading-relaxed">
-              Vercel 대시보드에 구성된 <strong>GEMINI_API_KEY</strong> 환경변수를 연동하여 안전하게 서버사이드에서 AI 분석이 수행됩니다.
+              기본 서버 API 외에, 구글 무료 API 분당 할당량 제한(429)을 피하고 더 빠르고 무제한으로 사용하시려면 아래에 <strong>개인 API Key</strong>를 입력해 연동해 주세요!
             </p>
+          </div>
+        </div>
+
+        {/* 2. Personal Key Slot */}
+        <div className="space-y-2 pt-1.5" id="personal_api_key_section">
+          <div className="flex justify-between items-center text-xs">
+            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+              <Key size={13} className="text-amber-400" />
+              개인 API Key 입력란 (Personal Key)
+            </span>
+            <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border flex items-center gap-1 font-bold ${
+              customKey 
+                ? 'bg-emerald-950/60 border-emerald-900 text-emerald-400' 
+                : 'bg-indigo-950/50 border-indigo-900/60 text-indigo-400'
+            }`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${customKey ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
+              {customKey ? '개인키 연동중' : '기본 서버 API 가동'}
+            </span>
+          </div>
+
+          <div className="relative">
+            <input
+              type={showKey ? "text" : "password"}
+              value={customKey}
+              onChange={(e) => handleSaveKey(e.target.value)}
+              placeholder="Google AI Studio에서 발급받은 GEMINI_API_KEY 입력"
+              className="w-full bg-slate-950 hover:bg-slate-950/80 focus:bg-slate-950 border border-slate-800 focus:border-slate-700/85 focus:outline-none rounded-xl py-2 pl-3.5 pr-12 text-[11px] font-mono text-slate-200 placeholder-slate-600 transition"
+            />
+            <button
+              onClick={() => setShowKey(!showKey)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 transition"
+              title={showKey ? "가리기" : "보여주기"}
+            >
+              {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+
+          {/* Quick Guide */}
+          <div className="p-3 bg-slate-950/45 border border-slate-855 rounded-xl text-[10px] text-slate-400 space-y-1.5 leading-relaxed">
+            <p className="font-semibold text-slate-300 flex items-center gap-1">
+              <span>💡</span> Gemini API 키 무료 발급 방법:
+            </p>
+            <ol className="list-decimal pl-3.5 space-y-1 text-slate-400 text-[10px]">
+              <li>
+                <a 
+                  href="https://aistudio.google.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-indigo-400 hover:underline inline-flex items-center gap-0.5 font-bold"
+                >
+                  Google AI Studio (aistudio.google.com)
+                </a>에 로그인(구글 계정 연동)합니다.
+              </li>
+              <li>화면 상단의 <strong>'Get API key'</strong> 파란색 버튼을 클릭합니다.</li>
+              <li><strong>'Create API Key'</strong> 버튼을 클릭하여 새 키를 발급 받습니다.</li>
+              <li>생성된 <code>AIzaSy...</code> 형식의 긴 키를 복사한 뒤, 위의 입력란에 붙여넣어주세요!</li>
+            </ol>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] text-slate-500">
+              * 입력하신 API 키는 브라우저 로컬(localStorage)에만 안전하게 저장됩니다.
+            </span>
+            {saveStatus && (
+              <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1 animate-pulse">
+                <Check size={11} />
+                로컬 저장 완료!
+              </span>
+            )}
           </div>
         </div>
       </div>
