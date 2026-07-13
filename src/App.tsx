@@ -250,17 +250,38 @@ export default function App() {
       possibleFrames = ['cyber-neon', 'wooden', 'none'];
     }
 
+    const presets = getPresetArtworks()[activeHallId] || [];
     const existingArtworks = [...(galleryArtworks[activeHallId] || [])];
-    let maxWallIndexTouched = 1;
+
+    // Helper to determine if an artwork is custom-uploaded by comparing it with preset defaults
+    const isCustom = (art: Artwork) => {
+      const preset = presets.find(p => p.id === art.id);
+      if (!preset) {
+        return art.imageUrl && art.imageUrl !== '';
+      }
+      return art.imageUrl !== preset.imageUrl || art.title !== preset.title;
+    };
+
+    // Find wall numbers that already have custom user artworks
+    const customWallNums = existingArtworks
+      .filter(isCustom)
+      .map(art => {
+        const match = art.id.match(/_w(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter((num): num is number => num !== null);
+
+    // Filter wallOrder to find unoccupied wall numbers first
+    const unoccupiedWalls = wallOrder.filter(num => !customWallNums.includes(num));
+    const occupiedWalls = wallOrder.filter(num => customWallNums.includes(num));
+    
+    // Assemble sequence: fill empty walls first, then overwrite existing custom ones if everything is full
+    const targetWallSequence = [...unoccupiedWalls, ...occupiedWalls];
 
     uploadedData.forEach((item, index) => {
-      // Determine wall slot using the dispersion sequence.
-      const wallNum = wallOrder[index % wallOrder.length];
+      // Determine wall slot using the smart sequence
+      const wallNum = targetWallSequence[index % targetWallSequence.length];
       const wallId = `${activeHallId}_w${wallNum}`;
-
-      if (wallNum > maxWallIndexTouched) {
-        maxWallIndexTouched = wallNum;
-      }
 
       // Keep original aspect ratio
       const ratio = item.width / item.height;
@@ -319,16 +340,25 @@ export default function App() {
       [activeHallId]: existingArtworks
     }));
 
-    // 4. Automatically adjust active wall limit to encompass the highest wall index we touched!
+    // 4. Automatically adjust active wall limit to encompass the highest wall index we touched/used!
+    const updatedCustomWallNums = existingArtworks
+      .filter(isCustom)
+      .map(art => {
+        const match = art.id.match(/_w(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter((num): num is number => num !== null);
+
+    const maxCustomWallNum = updatedCustomWallNums.length > 0 ? Math.max(...updatedCustomWallNums) : 1;
     const currentLimit = hallsArtworksLimits[activeHallId] || 4;
-    if (maxWallIndexTouched > currentLimit) {
+    if (maxCustomWallNum > currentLimit) {
       setHallsArtworksLimits(prev => ({
         ...prev,
-        [activeHallId]: maxWallIndexTouched
+        [activeHallId]: maxCustomWallNum
       }));
     }
 
-    alert(`총 ${uploadedData.length}개의 작품이 원본 비율을 완벽히 유지하여 동서남북 골고루 분산 배치되었습니다!`);
+    alert(`총 ${uploadedData.length}개의 작품이 원본 비율을 완벽히 유지하며 빈 전용 벽면들에 골고루 배치되었습니다!`);
   };
 
   const handleResetGalleryToPresets = () => {
