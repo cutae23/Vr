@@ -636,34 +636,48 @@ export default function UIOverlay({
         </div>
 
         {uploadTab === 'file' && (
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => bulkFileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 ${
-              isDragging 
-                ? 'border-indigo-500 bg-indigo-950/25 shadow-[0_0_15px_rgba(99,102,241,0.15)] scale-[0.99]' 
-                : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/80'
-            }`}
-            title="클릭하여 이미지를 여러 장 선택하거나 이곳에 드래그 앤 드롭 하세요!"
-          >
-            {isUploading ? (
-              <div className="flex flex-col items-center gap-2 py-2">
-                <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-[10px] font-bold text-slate-300 animate-pulse">이미지 비율 분석 및 3D 배치 중...</span>
-              </div>
-            ) : (
-              <>
-                <div className="p-2.5 bg-indigo-600/10 rounded-xl border border-indigo-500/20 text-indigo-400">
-                  <Upload size={18} />
+          <div className="space-y-2 animate-fade-in">
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => bulkFileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 ${
+                isDragging 
+                  ? 'border-indigo-500 bg-indigo-950/25 shadow-[0_0_15px_rgba(99,102,241,0.15)] scale-[0.99]' 
+                  : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/80'
+              }`}
+              title="클릭하여 이미지를 여러 장 선택하거나 이곳에 드래그 앤 드롭 하세요!"
+            >
+              {isUploading ? (
+                <div className="flex flex-col items-center gap-2 py-2">
+                  <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[10px] font-bold text-slate-300 animate-pulse">이미지 비율 분석 및 3D 배치 중...</span>
                 </div>
-                <div className="text-center">
-                  <p className="text-[11px] font-bold text-slate-200">여러 개의 이미지 선택 또는 드래그</p>
-                  <p className="text-[9px] text-slate-500 mt-1">Ctrl/Shift를 누른 채 여러 장 선택이 가능합니다</p>
-                </div>
-              </>
-            )}
+              ) : (
+                <>
+                  <div className="p-2.5 bg-indigo-600/10 rounded-xl border border-indigo-500/20 text-indigo-400">
+                    <Upload size={18} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[11px] font-bold text-slate-200">여러 개의 이미지 선택 또는 드래그</p>
+                    <p className="text-[9px] text-slate-500 mt-1">모바일은 사진첩에서 다중 선택이 가능합니다</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Mobile Multi-select Tips */}
+            <div className="bg-slate-950/60 border border-slate-850/50 rounded-xl p-2.5 text-[9px] text-slate-400 space-y-1">
+              <p className="font-bold text-indigo-400 flex items-center gap-1">
+                <span>📱</span> 모바일 다중 업로드 꿀팁!
+              </p>
+              <ul className="list-disc pl-3.5 space-y-0.5 text-slate-400 text-[8.5px] leading-relaxed">
+                <li>카카오톡/네이버 인앱이 아닌 <strong className="text-slate-200">순정 Safari / Chrome 브라우저</strong>로 접속해 주세요.</li>
+                <li>파일 선택 창이 열리면 우측 상단의 <strong className="text-slate-200">선택</strong> 버튼을 누르거나 이미지를 길게 터치하여 여러 장을 지정해 보세요!</li>
+                <li>갤러리 앱에 따라 다중 선택 아이콘(<span className="text-indigo-400">✓</span>)을 터치해야 한 번에 올라갑니다.</li>
+              </ul>
+            </div>
           </div>
         )}
 
@@ -726,7 +740,7 @@ export default function UIOverlay({
           ref={bulkFileInputRef}
           onChange={handleBulkFileChange}
           multiple
-          accept="image/png, image/jpeg, image/jpg, image/gif, image/webp, image/*"
+          accept="image/*"
           className="hidden"
           onClick={(e) => e.stopPropagation()}
         />
