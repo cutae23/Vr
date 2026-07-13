@@ -156,34 +156,38 @@ export default function UIOverlay({
           continue; // skip non-image
         }
 
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (evt) => resolve(evt.target?.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        try {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (evt) => resolve(evt.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
 
-        const dims = await new Promise<{ width: number; height: number }>((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            resolve({ width: img.naturalWidth, height: img.naturalHeight });
-          };
-          img.onerror = () => {
-            resolve({ width: 800, height: 600 }); // fallback
-          };
-          img.src = base64;
-        });
+          const dims = await new Promise<{ width: number; height: number }>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              resolve({ width: img.naturalWidth, height: img.naturalHeight });
+            };
+            img.onerror = () => {
+              resolve({ width: 800, height: 600 }); // fallback
+            };
+            img.src = base64;
+          });
 
-        const randomArtists = ["큐레이터 수집가", "나만의 아틀리에", "가상 예술 애호가", "시각 디자이너", "익명의 크리에이터"];
-        const artist = randomArtists[Math.floor(Math.random() * randomArtists.length)];
+          const randomArtists = ["큐레이터 수집가", "나만의 아틀리에", "가상 예술 애호가", "시각 디자이너", "익명의 크리에이터"];
+          const artist = randomArtists[Math.floor(Math.random() * randomArtists.length)];
 
-        loadedArtworks.push({
-          imageUrl: base64,
-          width: dims.width,
-          height: dims.height,
-          title: file.name.replace(/\.[^/.]+$/, ""), // file name without extension
-          artist: artist
-        });
+          loadedArtworks.push({
+            imageUrl: base64,
+            width: dims.width,
+            height: dims.height,
+            title: file.name.replace(/\.[^/.]+$/, ""), // file name without extension
+            artist: artist
+          });
+        } catch (innerErr) {
+          console.warn(`Error processing file ${file.name}:`, innerErr);
+        }
       }
 
       if (loadedArtworks.length > 0) {
@@ -494,15 +498,6 @@ export default function UIOverlay({
           }`}
           title="클릭하여 이미지를 여러 장 선택하거나 이곳에 드래그 앤 드롭 하세요!"
         >
-          <input
-            type="file"
-            ref={bulkFileInputRef}
-            onChange={handleBulkFileChange}
-            multiple
-            accept="image/*"
-            className="hidden"
-          />
-
           {isUploading ? (
             <div className="flex flex-col items-center gap-2 py-2">
               <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -520,6 +515,16 @@ export default function UIOverlay({
             </>
           )}
         </div>
+
+        <input
+          type="file"
+          ref={bulkFileInputRef}
+          onChange={handleBulkFileChange}
+          multiple
+          accept="image/png, image/jpeg, image/jpg, image/gif, image/webp, image/*"
+          className="hidden"
+          onClick={(e) => e.stopPropagation()}
+        />
 
         {/* Curation Guide badges */}
         <div className="grid grid-cols-3 gap-1.5 text-[9px] text-slate-400">
