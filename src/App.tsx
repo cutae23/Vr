@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Artwork, ExhibitionHall, HallType, PlayerPosition } from './types';
+import { Artwork, ExhibitionHall, HallType, PlayerPosition, FrameType } from './types';
 import { EXHIBITION_HALLS, getPresetArtworks } from './data';
 import GalleryCanvas from './components/GalleryCanvas';
 import UIOverlay from './components/UIOverlay';
@@ -232,6 +232,105 @@ export default function App() {
     setSelectedWallId(null);
   };
 
+  const handleBulkUpload = (uploadedData: { imageUrl: string; width: number; height: number; title: string; artist: string }[]) => {
+    if (uploadedData.length === 0) return;
+
+    // 1. Define spatial dispersion sequence for 15 walls
+    const wallOrder = [1, 5, 9, 12, 15, 2, 6, 10, 13, 3, 7, 11, 14, 4, 8];
+    
+    // 2. Select appropriate frame types for the current active hall to create organic visual variety
+    let possibleFrames: FrameType[] = ['none', 'thin-black'];
+    if (activeHallId === 'classic' || activeHallId === 'renaissance') {
+      possibleFrames = ['ornate-gold', 'wooden'];
+    } else if (activeHallId === 'neon' || activeHallId === 'vanguard' || activeHallId === 'cyberpunk') {
+      possibleFrames = ['cyber-neon', 'thin-black', 'none'];
+    } else if (activeHallId === 'nordic' || activeHallId === 'zen') {
+      possibleFrames = ['wooden', 'none'];
+    } else if (activeHallId === 'retro') {
+      possibleFrames = ['cyber-neon', 'wooden', 'none'];
+    }
+
+    const existingArtworks = [...(galleryArtworks[activeHallId] || [])];
+    let maxWallIndexTouched = 1;
+
+    uploadedData.forEach((item, index) => {
+      // Determine wall slot using the dispersion sequence.
+      const wallNum = wallOrder[index % wallOrder.length];
+      const wallId = `${activeHallId}_w${wallNum}`;
+
+      if (wallNum > maxWallIndexTouched) {
+        maxWallIndexTouched = wallNum;
+      }
+
+      // Keep original aspect ratio
+      const ratio = item.width / item.height;
+
+      // Apply high-fidelity scale rhythm (e.g. key focus wall gets a slightly grander scale, secondary gets elegant small size)
+      let baseScale = 2.4; // standard size
+      if (wallNum === 1 || wallNum === 5 || wallNum === 15) {
+        baseScale = 2.8; // grand display size
+      } else if (wallNum % 3 === 0) {
+        baseScale = 1.8; // intimate delicate size
+      } else {
+        baseScale = 2.2; // medium classic size
+      }
+
+      let finalWidth = baseScale;
+      let finalHeight = baseScale / ratio;
+
+      // Prevent going out of realistic height limit
+      if (finalHeight > 2.5) {
+        finalHeight = 2.5;
+        finalWidth = 2.5 * ratio;
+      }
+      // Prevent going too wide for standard panels
+      if (finalWidth > 4.5) {
+        finalWidth = 4.5;
+        finalHeight = 4.5 / ratio;
+      }
+
+      // Assign appropriate frames rhythmically
+      const frameType = possibleFrames[index % possibleFrames.length];
+
+      const newArtwork: Artwork = {
+        id: wallId,
+        title: item.title,
+        artist: item.artist,
+        year: new Date().getFullYear().toString(),
+        description: `${currentHall.name}의 ${wallNum}번 전용 벽면에 큐레이팅된 매혹적인 커스텀 예술 작품입니다.`,
+        imageUrl: item.imageUrl,
+        width: parseFloat(finalWidth.toFixed(2)),
+        height: parseFloat(finalHeight.toFixed(2)),
+        frameType: frameType
+      };
+
+      // Replace if existing artwork on that wall ID, otherwise append
+      const existingIndex = existingArtworks.findIndex(art => art.id === wallId);
+      if (existingIndex >= 0) {
+        existingArtworks[existingIndex] = newArtwork;
+      } else {
+        existingArtworks.push(newArtwork);
+      }
+    });
+
+    // 3. Update gallery artworks state
+    setGalleryArtworks(prev => ({
+      ...prev,
+      [activeHallId]: existingArtworks
+    }));
+
+    // 4. Automatically adjust active wall limit to encompass the highest wall index we touched!
+    const currentLimit = hallsArtworksLimits[activeHallId] || 4;
+    if (maxWallIndexTouched > currentLimit) {
+      setHallsArtworksLimits(prev => ({
+        ...prev,
+        [activeHallId]: maxWallIndexTouched
+      }));
+    }
+
+    alert(`총 ${uploadedData.length}개의 작품이 원본 비율을 완벽히 유지하여 동서남북 골고루 분산 배치되었습니다!`);
+  };
+
   const handleResetGalleryToPresets = () => {
     if (window.confirm('가상 갤러리를 원래 작가분들의 초기 기획전 전시 세팅으로 되돌리시겠습니까? (커스텀 등록한 모든 이미지가 리셋됩니다)')) {
       const defaults = getPresetArtworks();
@@ -424,6 +523,7 @@ export default function App() {
           activeArtworksLimit={activeArtworksLimit}
           setActiveArtworksLimit={setActiveArtworksLimit}
           activeDocentId={focusArtworkId || nearestArtworkId}
+          onBulkUpload={handleBulkUpload}
         />
 
       </main>

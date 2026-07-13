@@ -21,7 +21,8 @@ import {
   Eye,
   EyeOff,
   Check,
-  Settings
+  Settings,
+  Upload
 } from 'lucide-react';
 import { EXHIBITION_HALLS } from '../data';
 
@@ -56,6 +57,7 @@ interface UIOverlayProps {
   activeArtworksLimit: number;
   setActiveArtworksLimit: (limit: number) => void;
   activeDocentId?: string | null;
+  onBulkUpload: (uploadedData: { imageUrl: string; width: number; height: number; title: string; artist: string }[]) => void;
 }
 
 export default function UIOverlay({
@@ -74,7 +76,8 @@ export default function UIOverlay({
   setVisibleHallsCount,
   activeArtworksLimit,
   setActiveArtworksLimit,
-  activeDocentId
+  activeDocentId,
+  onBulkUpload
 }: UIOverlayProps) {
   const minimapCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -126,6 +129,90 @@ export default function UIOverlay({
     }
     setSaveStatus(true);
     setTimeout(() => setSaveStatus(false), 2000);
+  };
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const processFiles = async (files: FileList) => {
+    if (files.length === 0) return;
+    setIsUploading(true);
+    const loadedArtworks: { imageUrl: string; width: number; height: number; title: string; artist: string }[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) {
+          continue; // skip non-image
+        }
+
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (evt) => resolve(evt.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const dims = await new Promise<{ width: number; height: number }>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          };
+          img.onerror = () => {
+            resolve({ width: 800, height: 600 }); // fallback
+          };
+          img.src = base64;
+        });
+
+        const randomArtists = ["큐레이터 수집가", "나만의 아틀리에", "가상 예술 애호가", "시각 디자이너", "익명의 크리에이터"];
+        const artist = randomArtists[Math.floor(Math.random() * randomArtists.length)];
+
+        loadedArtworks.push({
+          imageUrl: base64,
+          width: dims.width,
+          height: dims.height,
+          title: file.name.replace(/\.[^/.]+$/, ""), // file name without extension
+          artist: artist
+        });
+      }
+
+      if (loadedArtworks.length > 0) {
+        onBulkUpload(loadedArtworks);
+      } else {
+        alert('업로드 가능한 이미지 파일을 선택해주세요.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('이미지 비율 분석 처리 중 에러가 발생했습니다.');
+    } finally {
+      setIsUploading(false);
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files) {
+      processFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processFiles(e.target.files);
+    }
+    e.target.value = ''; // reset
   };
   // Draw 2D Minimap dynamically
   useEffect(() => {
@@ -380,6 +467,73 @@ export default function UIOverlay({
               <span>미디움 (10개)</span>
               <span>맥시멈 (15개)</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2.5 Bulk Image Upload Card with high-fidelity visual layout */}
+      <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 p-5 rounded-2xl space-y-4 animate-fade-in" id="bulk_image_uploader_panel">
+        <div className="flex items-center gap-2">
+          <Upload className="text-indigo-400" size={18} />
+          <h3 className="text-sm font-bold text-slate-100">그림 한 번에 올리기 (일괄 업로드)</h3>
+        </div>
+
+        <p className="text-[10px] text-slate-400 leading-relaxed">
+          현재 선택된 <strong>{currentHall.name.split(' : ')[0]}</strong>에 여러 장의 이미지를 동시에 업로드해 나만의 전시를 한 번에 큐레이션해 보세요!
+        </p>
+
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => bulkFileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 ${
+            isDragging 
+              ? 'border-indigo-500 bg-indigo-950/25 shadow-[0_0_15px_rgba(99,102,241,0.15)] scale-[0.99]' 
+              : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/80'
+          }`}
+          title="클릭하여 이미지를 여러 장 선택하거나 이곳에 드래그 앤 드롭 하세요!"
+        >
+          <input
+            type="file"
+            ref={bulkFileInputRef}
+            onChange={handleBulkFileChange}
+            multiple
+            accept="image/*"
+            className="hidden"
+          />
+
+          {isUploading ? (
+            <div className="flex flex-col items-center gap-2 py-2">
+              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] font-bold text-slate-300 animate-pulse">이미지 비율 분석 및 3D 배치 중...</span>
+            </div>
+          ) : (
+            <>
+              <div className="p-2.5 bg-indigo-600/10 rounded-xl border border-indigo-500/20 text-indigo-400">
+                <Upload size={18} />
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] font-bold text-slate-200">여러 개의 이미지 선택 또는 드래그</p>
+                <p className="text-[9px] text-slate-500 mt-1">PNG, JPG, JPEG 등 이미지 일괄 등록 지원</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Curation Guide badges */}
+        <div className="grid grid-cols-3 gap-1.5 text-[9px] text-slate-400">
+          <div className="p-1.5 bg-slate-950/60 border border-slate-850/80 rounded-lg text-center flex flex-col justify-center items-center">
+            <span className="font-bold text-indigo-400">비례 100% 보존</span>
+            <span className="text-[8px] text-slate-500 mt-0.5 leading-none">원본 종횡비 유지</span>
+          </div>
+          <div className="p-1.5 bg-slate-950/60 border border-slate-850/80 rounded-lg text-center flex flex-col justify-center items-center">
+            <span className="font-bold text-emerald-400">동서남북 분산</span>
+            <span className="text-[8px] text-slate-500 mt-0.5 leading-none">텅 비지 않는 배치</span>
+          </div>
+          <div className="p-1.5 bg-slate-950/60 border border-slate-850/80 rounded-lg text-center flex flex-col justify-center items-center">
+            <span className="font-bold text-amber-400">크기 율동감</span>
+            <span className="text-[8px] text-slate-500 mt-0.5 leading-none">지루하지 않은 리듬</span>
           </div>
         </div>
       </div>
