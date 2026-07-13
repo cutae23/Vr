@@ -134,6 +134,121 @@ export default function UIOverlay({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTab, setUploadTab] = useState<'file' | 'url' | 'demopack'>('file');
+  const [urlInputText, setUrlInputText] = useState('');
+
+  const DEMO_PACKS = [
+    {
+      id: 'classic',
+      name: '🏛️ 명화 & 고전 회화 컬렉션',
+      desc: '반 고흐, 모네 등 감성적이고 기품 있는 정통 유화 및 클래식 예술 작품 5점',
+      artworks: [
+        { imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=1000&q=80', width: 800, height: 1000, title: '꽃 피는 가든', artist: '빈센트 에튜드' },
+        { imageUrl: 'https://images.unsplash.com/photo-1579783928621-7a13d66a6211?w=1000&q=80', width: 800, height: 1100, title: '빅토리안 사색', artist: '마담 뒤바리' },
+        { imageUrl: 'https://images.unsplash.com/photo-1580136579312-94651dfd596d?w=1000&q=80', width: 900, height: 700, title: '서정적 숲', artist: '장 프라고나르' },
+        { imageUrl: 'https://images.unsplash.com/photo-1549490349-8643362247b5?w=1000&q=80', width: 800, height: 960, title: '황금 장식 무늬', artist: '구스타프 아뜰리에' },
+        { imageUrl: 'https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?w=1000&q=80', width: 1200, height: 800, title: '천상의 붓터치', artist: '미켈란 키드' }
+      ]
+    },
+    {
+      id: 'modern',
+      name: '🎨 네온 팝아트 & 현대 추상',
+      desc: '감각적인 컬러 비주얼과 기하학 형태의 미래지향적 네온 및 현대 추상 5점',
+      artworks: [
+        { imageUrl: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=1000&q=80', width: 1000, height: 750, title: '사이키델릭 브레인', artist: '팝 큐레이션' },
+        { imageUrl: 'https://images.unsplash.com/photo-1500462961340-e119ca1904a0?w=1000&q=80', width: 800, height: 1200, title: '스펙트럼 에너지', artist: '일루전 크레이터' },
+        { imageUrl: 'https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=1000&q=80', width: 1100, height: 730, title: '네온 라이트 로망', artist: '플래시 일렉트로' },
+        { imageUrl: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=1000&q=80', width: 950, height: 630, title: '미니멀 나이트', artist: '모노 스타일' },
+        { imageUrl: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=1000&q=80', width: 850, height: 1060, title: '큐비즘 무브먼트', artist: '바실리 디지털' }
+      ]
+    },
+    {
+      id: 'nature',
+      name: '🌲 깊은 산림 & 우주의 평화',
+      desc: '마음의 안정과 풍성한 사색을 돕는 심산유곡, 해저 세계, 은하 성운 풍경 5점',
+      artworks: [
+        { imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1000&q=80', width: 1200, height: 800, title: '안개 숲의 햇살', artist: '네이처 프레임' },
+        { imageUrl: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=1000&q=80', width: 1000, height: 660, title: '해저의 푸른 심연', artist: '아쿠아 블루' },
+        { imageUrl: 'https://images.unsplash.com/photo-1464802686167-b939a6910659?w=1000&q=80', width: 1200, height: 750, title: '은하수 파노라마', artist: '아스트로 코스모스' },
+        { imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1000&q=80', width: 1100, height: 730, title: '알프스 고도 고산', artist: '마운틴 리더' },
+        { imageUrl: 'https://images.unsplash.com/photo-1504618223053-559bdef9dd5a?w=1000&q=80', width: 900, height: 1200, title: '대나무 숲의 청정', artist: '죽림 거사' }
+      ]
+    }
+  ];
+
+  const handleUrlUpload = async () => {
+    if (!urlInputText.trim()) {
+      alert('이미지 웹 주소(URL)를 입력해주세요.');
+      return;
+    }
+
+    setIsUploading(true);
+    const urls = urlInputText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && (line.startsWith('http://') || line.startsWith('https://') || line.startsWith('data:image')));
+
+    if (urls.length === 0) {
+      alert('올바른 이미지 웹 주소(http:// 또는 https://로 시작)를 입력해주세요.');
+      setIsUploading(false);
+      return;
+    }
+
+    const loadedArtworks: { imageUrl: string; width: number; height: number; title: string; artist: string }[] = [];
+
+    try {
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        try {
+          const dims = await new Promise<{ width: number; height: number }>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              resolve({ width: img.naturalWidth || img.width || 800, height: img.naturalHeight || img.height || 600 });
+            };
+            img.onerror = () => {
+              resolve({ width: 800, height: 600 }); // default fallback ratio
+            };
+            img.src = url;
+          });
+
+          let title = `무제 (웹 컬렉션 #${i + 1})`;
+          try {
+            const urlObj = new URL(url);
+            const pathname = urlObj.pathname;
+            const filename = pathname.substring(pathname.lastIndexOf('/') + 1);
+            if (filename && filename.includes('.')) {
+              title = decodeURIComponent(filename.split('.')[0]).substring(0, 20);
+            }
+          } catch (_) {}
+
+          const randomArtists = ["디지털 아티스트", "AI 큐레이터", "글로벌 비주얼 크리에이터", "웹 콜렉터", "네트 아트 서퍼"];
+          const artist = randomArtists[Math.floor(Math.random() * randomArtists.length)];
+
+          loadedArtworks.push({
+            imageUrl: url,
+            width: dims.width,
+            height: dims.height,
+            title: title || `디지털 가상 예술 #${i + 1}`,
+            artist: artist
+          });
+        } catch (innerErr) {
+          console.warn(`Error loading url: ${url}`, innerErr);
+        }
+      }
+
+      if (loadedArtworks.length > 0) {
+        onBulkUpload(loadedArtworks);
+        setUrlInputText(''); // clear on success
+      } else {
+        alert('이미지 정보를 불러올 수 없었습니다. 웹 주소가 유효하고 접근 가능한지 확인해 주세요.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('이미지 분석 처리 중 에러가 발생했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -483,38 +598,128 @@ export default function UIOverlay({
         </div>
 
         <p className="text-[10px] text-slate-400 leading-relaxed">
-          현재 선택된 <strong>{currentHall.name.split(' : ')[0]}</strong>에 여러 장의 이미지를 동시에 업로드해 나만의 전시를 한 번에 큐레이션해 보세요!
+          현재 선택된 <strong>{currentHall.name.split(' : ')[0]}</strong>에 여러 장의 이미지를 배치해 나만의 전시를 한 번에 큐레이션해 보세요!
         </p>
 
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => bulkFileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 ${
-            isDragging 
-              ? 'border-indigo-500 bg-indigo-950/25 shadow-[0_0_15px_rgba(99,102,241,0.15)] scale-[0.99]' 
-              : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/80'
-          }`}
-          title="클릭하여 이미지를 여러 장 선택하거나 이곳에 드래그 앤 드롭 하세요!"
-        >
-          {isUploading ? (
-            <div className="flex flex-col items-center gap-2 py-2">
-              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[10px] font-bold text-slate-300 animate-pulse">이미지 비율 분석 및 3D 배치 중...</span>
-            </div>
-          ) : (
-            <>
-              <div className="p-2.5 bg-indigo-600/10 rounded-xl border border-indigo-500/20 text-indigo-400">
-                <Upload size={18} />
-              </div>
-              <div className="text-center">
-                <p className="text-[11px] font-bold text-slate-200">여러 개의 이미지 선택 또는 드래그</p>
-                <p className="text-[9px] text-slate-500 mt-1">PNG, JPG, JPEG 등 이미지 일괄 등록 지원</p>
-              </div>
-            </>
-          )}
+        {/* Tab triggers */}
+        <div className="grid grid-cols-3 gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-850">
+          <button
+            onClick={() => setUploadTab('file')}
+            className={`py-1.5 text-[9px] font-bold rounded-lg transition-all duration-200 ${
+              uploadTab === 'file'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            📂 내 PC 파일
+          </button>
+          <button
+            onClick={() => setUploadTab('url')}
+            className={`py-1.5 text-[9px] font-bold rounded-lg transition-all duration-200 ${
+              uploadTab === 'url'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            🔗 이미지 주소
+          </button>
+          <button
+            onClick={() => setUploadTab('demopack')}
+            className={`py-1.5 text-[9px] font-bold rounded-lg transition-all duration-200 ${
+              uploadTab === 'demopack'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            🎁 추천 큐레이션
+          </button>
         </div>
+
+        {uploadTab === 'file' && (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => bulkFileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 ${
+              isDragging 
+                ? 'border-indigo-500 bg-indigo-950/25 shadow-[0_0_15px_rgba(99,102,241,0.15)] scale-[0.99]' 
+                : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/80'
+            }`}
+            title="클릭하여 이미지를 여러 장 선택하거나 이곳에 드래그 앤 드롭 하세요!"
+          >
+            {isUploading ? (
+              <div className="flex flex-col items-center gap-2 py-2">
+                <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-[10px] font-bold text-slate-300 animate-pulse">이미지 비율 분석 및 3D 배치 중...</span>
+              </div>
+            ) : (
+              <>
+                <div className="p-2.5 bg-indigo-600/10 rounded-xl border border-indigo-500/20 text-indigo-400">
+                  <Upload size={18} />
+                </div>
+                <div className="text-center">
+                  <p className="text-[11px] font-bold text-slate-200">여러 개의 이미지 선택 또는 드래그</p>
+                  <p className="text-[9px] text-slate-500 mt-1">Ctrl/Shift를 누른 채 여러 장 선택이 가능합니다</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {uploadTab === 'url' && (
+          <div className="space-y-2 animate-fade-in">
+            <textarea
+              value={urlInputText}
+              onChange={(e) => setUrlInputText(e.target.value)}
+              placeholder="예시:&#10;https://images.unsplash.com/photo-1579783900882-c0d3dad7b119&#10;https://images.unsplash.com/photo-1549490349-8643362247b5&#10;(한 줄에 하나씩 이미지 웹주소를 입력해주세요)"
+              className="w-full h-24 bg-slate-950/80 border border-slate-850 p-2 text-[9px] rounded-lg text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono resize-none leading-relaxed"
+            />
+            <button
+              onClick={handleUrlUpload}
+              disabled={isUploading || !urlInputText.trim()}
+              className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] font-bold rounded-lg shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {isUploading ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  웹 이미지 주소 분석 및 3D 배치 중...
+                </>
+              ) : (
+                '🔗 입력한 이미지 일괄 배치하기'
+              )}
+            </button>
+          </div>
+        )}
+
+        {uploadTab === 'demopack' && (
+          <div className="space-y-2 animate-fade-in">
+            <p className="text-[9px] text-slate-400 leading-tight">
+              이미지 주소를 찾기 번거로우신가요? 1초 만에 최고 화질의 명작 / 아트를 벽면 가득 채워보세요!
+            </p>
+            <div className="space-y-1.5 max-h-[145px] overflow-y-auto pr-1">
+              {DEMO_PACKS.map((pack) => (
+                <button
+                  key={pack.id}
+                  onClick={() => {
+                    onBulkUpload(pack.artworks);
+                  }}
+                  className="w-full p-2 bg-slate-950/50 hover:bg-slate-950/90 border border-slate-850 hover:border-indigo-500/50 rounded-xl text-left transition-all group flex items-start gap-1.5 cursor-pointer"
+                >
+                  <div className="mt-0.5 text-[10px]">✨</div>
+                  <div className="space-y-0.5">
+                    <div className="text-[10px] font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">
+                      {pack.name}
+                    </div>
+                    <div className="text-[8px] text-slate-500 leading-tight">
+                      {pack.desc}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <input
           type="file"
