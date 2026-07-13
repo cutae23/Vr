@@ -22,7 +22,9 @@ import {
   EyeOff,
   Check,
   Settings,
-  Upload
+  Upload,
+  Trash2,
+  X
 } from 'lucide-react';
 import { EXHIBITION_HALLS } from '../data';
 
@@ -136,6 +138,24 @@ export default function UIOverlay({
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTab, setUploadTab] = useState<'file' | 'url' | 'demopack'>('file');
   const [urlInputText, setUrlInputText] = useState('');
+  const [stagedArtworks, setStagedArtworks] = useState<{ imageUrl: string; width: number; height: number; title: string; artist: string }[]>([]);
+
+  const handleRemoveStaged = (index: number) => {
+    setStagedArtworks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearStaged = () => {
+    setStagedArtworks([]);
+  };
+
+  const handleApplyStaged = () => {
+    if (stagedArtworks.length === 0) {
+      alert('대기열에 추가된 작품이 없습니다. 이미지를 먼저 등록해주세요!');
+      return;
+    }
+    onBulkUpload(stagedArtworks);
+    setStagedArtworks([]); // clear queue on success
+  };
 
   const DEMO_PACKS = [
     {
@@ -237,7 +257,7 @@ export default function UIOverlay({
       }
 
       if (loadedArtworks.length > 0) {
-        onBulkUpload(loadedArtworks);
+        setStagedArtworks(prev => [...prev, ...loadedArtworks]);
         setUrlInputText(''); // clear on success
       } else {
         alert('이미지 정보를 불러올 수 없었습니다. 웹 주소가 유효하고 접근 가능한지 확인해 주세요.');
@@ -306,7 +326,7 @@ export default function UIOverlay({
       }
 
       if (loadedArtworks.length > 0) {
-        onBulkUpload(loadedArtworks);
+        setStagedArtworks(prev => [...prev, ...loadedArtworks]);
       } else {
         alert('업로드 가능한 이미지 파일을 선택해주세요.');
       }
@@ -697,10 +717,10 @@ export default function UIOverlay({
               {isUploading ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  웹 이미지 주소 분석 및 3D 배치 중...
+                  웹 이미지 주소 분석 및 추가 중...
                 </>
               ) : (
-                '🔗 입력한 이미지 일괄 배치하기'
+                '🔗 입력한 이미지 대기열에 추가하기'
               )}
             </button>
           </div>
@@ -716,7 +736,7 @@ export default function UIOverlay({
                 <button
                   key={pack.id}
                   onClick={() => {
-                    onBulkUpload(pack.artworks);
+                    setStagedArtworks(prev => [...prev, ...pack.artworks]);
                   }}
                   className="w-full p-2 bg-slate-950/50 hover:bg-slate-950/90 border border-slate-850 hover:border-indigo-500/50 rounded-xl text-left transition-all group flex items-start gap-1.5 cursor-pointer"
                 >
@@ -732,6 +752,72 @@ export default function UIOverlay({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Staging Queue Section */}
+        {stagedArtworks.length > 0 && (
+          <div className="p-3 bg-slate-950/75 border border-indigo-900/40 rounded-2xl space-y-2.5 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-200 flex items-center gap-1">
+                <span className="text-indigo-400">📋</span> 업로드 대기열 ({stagedArtworks.length}개 작품)
+              </span>
+              <button
+                onClick={handleClearStaged}
+                className="text-[8px] text-slate-500 hover:text-rose-400 transition-colors flex items-center gap-0.5 cursor-pointer"
+                title="대기열 비우기"
+              >
+                <Trash2 size={10} />
+                전체 비우기
+              </button>
+            </div>
+
+            {/* Horizontal Scroll of Thumbnails */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              {stagedArtworks.map((art, index) => (
+                <div key={index} className="relative w-14 h-14 rounded-lg bg-slate-900 border border-slate-800 flex-shrink-0 overflow-hidden group">
+                  <img
+                    src={art.imageUrl}
+                    alt={art.title}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  {/* Delete Button */}
+                  <button
+                    onClick={() => handleRemoveStaged(index)}
+                    className="absolute top-0.5 right-0.5 p-0.5 bg-slate-950/80 hover:bg-rose-600 rounded-md text-slate-400 hover:text-white transition-all shadow-sm cursor-pointer"
+                    title="대기열에서 삭제"
+                  >
+                    <X size={8} />
+                  </button>
+                  {/* Miniature Ratio Badge */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-slate-950/70 text-[7px] text-slate-400 text-center py-0.5 font-mono truncate">
+                    {Math.round(art.width)}:{Math.round(art.height)}
+                  </div>
+                </div>
+              ))}
+
+              {/* Extra Add Button inside the row */}
+              <button
+                onClick={() => bulkFileInputRef.current?.click()}
+                className="w-14 h-14 rounded-lg border border-dashed border-slate-800 hover:border-indigo-500 hover:bg-indigo-950/20 text-slate-500 hover:text-indigo-400 flex flex-col items-center justify-center gap-0.5 transition-colors flex-shrink-0 cursor-pointer"
+                title="이미지 추가"
+              >
+                <span className="text-xs font-bold">+</span>
+                <span className="text-[7px]">추가</span>
+              </button>
+            </div>
+
+            <p className="text-[8px] text-slate-500 leading-normal">
+              💡 모바일 환경 등에서 일괄 지정이 어려운 경우, <strong>'+ 추가'</strong> 버튼을 눌러 하나씩 차례로 대기열에 담은 후 마지막에 한 번에 배치할 수 있습니다.
+            </p>
+
+            <button
+              onClick={handleApplyStaged}
+              className="w-full py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-[10px] font-bold rounded-lg shadow-[0_2px_10px_rgba(99,102,241,0.2)] hover:shadow-[0_4px_15px_rgba(99,102,241,0.35)] transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+            >
+              <span>🎨</span> <strong>대기열 작품 미술관에 일괄 배치하기 ({stagedArtworks.length}개)</strong>
+            </button>
           </div>
         )}
 
